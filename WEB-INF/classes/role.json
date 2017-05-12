@@ -1,0 +1,17 @@
+[{
+	id:'manage0',
+	name:'角色1'
+},{
+	id:'manage1',
+	name:'角色2'
+},{
+	id:'manage2',
+	name:'角色3'
+},{
+	id:'manage3',
+	name:'角色4'
+},
+{
+	id:'default',
+	name:'默认角色'
+}]

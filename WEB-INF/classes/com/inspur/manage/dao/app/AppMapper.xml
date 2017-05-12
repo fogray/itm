@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.manage.dao.app.AppMapper">
+	<!-- 获取应用信息 -->
+	<select id="getAppInfo" parameterType="map" resultType="map">
+		SELECT APP_ID,APP_NAME,APP_CONTEXT,APP_ICON,APP_SEQ FROM SYS_APP
+		WHERE 1=1
+		<if test="APP_ID !=null and APP_ID != '' ">
+			AND APP_ID = #{APP_ID}
+		</if>
+		<if test="APP_CONTEXT !=null and APP_CONTEXT != '' ">
+			AND APP_CONTEXT = #{APP_CONTEXT}
+		</if>
+		ORDER BY APP_SEQ ASC
+	</select>
+</mapper>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.resource.emailserver.dao.EmailServerMapper">
+	<!-- 1 获取邮箱服务 -->
+	<select id="queryEmailServer" parameterType="map" resultType="map">
+		SELECT EMAIL_ID, SMTPSERVER, EMAIL, PASSWORD, DESCR
+		FROM ITM_EMAIL_SERVER
+	</select>
+	
+	<!-- 2 新增邮箱服务 -->
+	<insert id="insertEmailServer" parameterType="map">
+		INSERT INTO ITM_EMAIL_SERVER(EMAIL_ID, SMTPSERVER, EMAIL, PASSWORD, DESCR)
+		VALUES(
+			#{EMAIL_ID, jdbcType=VARCHAR},#{SMTPSERVER, jdbcType=VARCHAR},#{EMAIL, jdbcType=VARCHAR},#{PASSWORD, jdbcType=VARCHAR},#{DESCR, jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<!-- 3  更新邮箱服务 -->
+	<update id="updateEmailServer" parameterType="map">
+		UPDATE ITM_EMAIL_SERVER
+		SET EMAIL_ID = EMAIL_ID
+		<if test="SMTPSERVER != null">
+		  , SMTPSERVER = #{SMTPSERVER}
+		</if>
+		<if test="EMAIL != null">
+		  , EMAIL = #{EMAIL}
+		</if>
+		<if test="PASSWORD != null">
+		  , PASSWORD = #{PASSWORD}
+		</if>
+		<if test="DESCR != null">
+		  , DESCR = #{DESCR}
+		</if>
+		WHERE EMAIL_ID = #{EMAIL_ID}
+	</update>
+	
+</mapper>

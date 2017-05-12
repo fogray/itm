@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.manage.dao.resource.ResourceMapper">
+
+	<!-- 删除全部资源 -->
+	<delete id="deleteAllResource">
+		DELETE FROM SYS_RESOURCE
+	</delete>
+	<!-- 删除全部角色资源的对应 -->
+	<delete id="deleteAllResourceRole">
+		DELETE FROM SYS_RESOURCE_ROLE
+	</delete>
+
+	<!-- 通过SYS_CONFIG_KEY查询系统参数--> 
+	<select id="getSysConfig" parameterType="String" resultType="map">
+		SELECT SYS_CONFIG_KEY,SYS_CONFIG_VALUE FROM SYS_CONFIG WHERE SYS_CONFIG_KEY=#{value}
+	</select>
+	<!-- 更新SYS_CONFIG参数 -->
+	<update id="startPermitAdvance" parameterType="map">
+		UPDATE SYS_CONFIG SET SYS_CONFIG_VALUE = #{SYS_CONFIG_VALUE}  WHERE SYS_CONFIG_KEY=#{SYS_CONFIG_KEY}
+	</update>
+	
+	<!-- 获取资源列表 -->
+	<select id="queryResource" parameterType="map" resultType="map">
+		SELECT RESOURCE_ID,RESOURCE_NAME,RESOURCE_URL,IS_BUILTIN,RESOURCE_INDEX,NOTE
+		FROM SYS_RESOURCE
+		WHERE 1=1
+		<if test="RESOURCE_ID !=null and RESOURCE_ID !='' ">
+			AND RESOURCE_ID = #{RESOURCE_ID}
+		</if>
+		<if test="RESOURCE_URL !=null and RESOURCE_URL !='' ">
+			AND RESOURCE_URL LIKE '%'||#{RESOURCE_URL}||'%'
+		</if>
+		<if test="IS_BUILTIN !=null and IS_BUILTIN !='' ">
+			AND IS_BUILTIN = #{IS_BUILTIN}
+		</if>
+		<if test="APP_ID !=null and APP_ID !='' ">
+			AND APP_ID = #{APP_ID}
+		</if>
+	</select>
+	
+	<!-- 获取资源列表 -->
+	<select id="queryResourceList" parameterType="map" resultType="map">
+		SELECT E.RESOURCE_ID,E.RESOURCE_NAME,E.RESOURCE_URL,E.IS_BUILTIN,E.RESOURCE_INDEX,E.NOTE,E.PARENT_ID,E.APP_ID,E.IS_LEAF
+		FROM SYS_RESOURCE E
+		LEFT JOIN SYS_APP P  ON  E.APP_ID = P.APP_ID
+		WHERE 1=1
+		<if test="APP_ID !=null and APP_ID !='' ">
+			AND E.APP_ID = #{APP_ID}
+		</if>
+		<if test="RESOURCE_ID !=null and RESOURCE_ID !='' ">
+			AND E.RESOURCE_ID = #{RESOURCE_ID}
+		</if>
+		<if test="RESOURCE_NAME !=null and RESOURCE_NAME !='' ">
+			AND E.RESOURCE_NAME LIKE '%'||#{RESOURCE_NAME}||'%'
+		</if>
+		<if test="RESOURCE_URL !=null and RESOURCE_URL !='' ">
+			AND E.RESOURCE_URL LIKE '%'||#{RESOURCE_URL}||'%'
+		</if>
+		<if test="IS_BUILTIN !=null and IS_BUILTIN !='' ">
+			AND E.IS_BUILTIN = #{IS_BUILTIN}
+		</if>
+		GROUP BY E.RESOURCE_ID
+		ORDER BY E.RESOURCE_INDEX
+	</select>
+	
+	<!-- 新增资源 -->
+	<insert id="addResource" parameterType="map" >
+		INSERT INTO SYS_RESOURCE(RESOURCE_ID,RESOURCE_NAME,RESOURCE_URL,IS_BUILTIN,RESOURCE_INDEX,NOTE,APP_ID,PARENT_ID,IS_LEAF)
+		VALUES(#{RESOURCE_ID},#{RESOURCE_NAME},#{RESOURCE_URL},#{IS_BUILTIN},#{RESOURCE_INDEX},#{NOTE},#{APP_ID},#{PARENT_ID},#{IS_LEAF})
+	</insert>
+	<!-- 根据主键获取资源明细 -->
+	<select id="getResourceDetail" parameterType="String" resultType="map">
+		SELECT RESOURCE_ID,RESOURCE_NAME,RESOURCE_URL,IS_BUILTIN,RESOURCE_INDEX,NOTE
+		FROM SYS_RESOURCE
+		WHERE RESOURCE_ID = #{value}
+	</select>
+	<!-- 更新资源 -->
+	<update id="updateResource" parameterType="map" >
+		UPDATE SYS_RESOURCE
+		SET RESOURCE_ID = #{RESOURCE_ID}
+		<if test="RESOURCE_NAME !=null and RESOURCE_NAME !='' ">
+			,RESOURCE_NAME = #{RESOURCE_NAME}
+		</if>
+		<if test="RESOURCE_URL !=null and RESOURCE_URL !='' ">
+			,RESOURCE_URL = #{RESOURCE_URL}
+		</if>
+		<if test="IS_BUILTIN !=null and IS_BUILTIN !='' ">
+			,IS_BUILTIN = #{IS_BUILTIN}
+		</if>
+		<if test="RESOURCE_INDEX !=null and RESOURCE_INDEX !='' ">
+			,RESOURCE_INDEX = #{RESOURCE_INDEX}
+		</if>
+		<if test="NOTE !=null and NOTE !='' ">
+			,NOTE = #{NOTE}
+		</if>
+		WHERE RESOURCE_ID = #{RESOURCE_ID}
+	</update>
+	<!-- 删除资源 -->
+	<delete id="deleteResource" parameterType="String">
+		DELETE FROM SYS_RESOURCE WHERE RESOURCE_ID IN (${value})
+	</delete>
+	
+	<!-- 根据角色获取相应资源 -->
+	<select id="getResourceByRole" parameterType="map"  resultType="map">
+		SELECT E.RESOURCE_ID,E.ROLE_ID FROM SYS_RESOURCE_ROLE E
+		WHERE 1=1
+		<if test="ROLE_ID !=null and ROLE_ID !='' ">
+			AND E.ROLE_ID = #{ROLE_ID}
+		</if>
+		GROUP BY E.RESOURCE_ID
+	</select>
+	
+	<!-- 删除资源 -->
+	<delete id="deleteResourceByApp" parameterType="String" >
+		DELETE FROM SYS_RESOURCE
+		WHERE  APP_ID = #{value}
+	</delete>
+	
+	<!-- 批量插入资源 -->
+	<insert id="insertSysResourceL"  parameterType ="map">
+		INSERT INTO SYS_RESOURCE ( RESOURCE_ID,APP_ID,RESOURCE_NAME,RESOURCE_URL,IS_BUILTIN,RESOURCE_INDEX,NOTE,PARENT_ID,IS_LEAF)
+		<foreach collection="list" item="obj" index="index" separator=" UNION " >  
+			SELECT #{obj.RESOURCE_ID},#{obj.APP_ID},#{obj.RESOURCE_NAME},#{obj.RESOURCE_URL},#{obj.IS_BUILTIN},
+				   #{obj.RESOURCE_INDEX},#{obj.NOTE},#{obj.PARENT_ID},#{obj.IS_LEAF}
+			FROM LAMBO_DUAL
+		</foreach>
+	</insert>
+	
+	<!-- 批量插入角色权限 -->
+	<insert id="insertPermitL" parameterType="map">
+		INSERT INTO SYS_RESOURCE_ROLE (RESOURCE_ID,ROLE_ID)
+		<foreach collection="list" item="obj" index="index" separator=" UNION " >  
+			SELECT #{obj.RESOURCE_ID},#{obj.ROLE_ID}
+			FROM LAMBO_DUAL
+		</foreach>
+	</insert>
+	
+	<!-- 增加角色权限 -->
+	<insert id="addPermit" parameterType="map">
+		INSERT INTO SYS_RESOURCE_ROLE(RESOURCE_ID,ROLE_ID,NOTE)
+		VALUES(#{RESOURCE_ID},#{ROLE_ID},#{NOTE})
+	</insert>
+	
+	<!-- 删除多个资源的角色权限 -->
+	<delete id="deletePermitByResouces" parameterType="String" >
+		DELETE FROM SYS_RESOURCE_ROLE
+		WHERE RESOURCE_ID IN ( ${value} )
+	</delete>
+	
+	<!-- 删除角色权限 -->
+	<delete id="deletePermit" parameterType="map" >
+		DELETE FROM SYS_RESOURCE_ROLE
+		WHERE 1=1
+		<if test="ROLE_ID !=null and ROLE_ID !='' ">
+			AND ROLE_ID = #{ROLE_ID}
+		</if>
+		<if test="RESOURCE_ID !=null and RESOURCE_ID !='' ">
+			AND RESOURCE_ID = #{RESOURCE_ID} 
+		</if>
+	</delete>
+	<!-- 获取角色权限 -->
+	<select id="getRoleResource" parameterType="map"  resultType="map">
+		SELECT A.RESOURCE_ID,
+		A.ROLE_ID,
+		B.RESOURCE_NAME,
+		C.APP_CONTEXT APP_CONTEXT,
+		B.RESOURCE_URL RESOURCE_URL
+		,B.IS_BUILTIN,B.RESOURCE_INDEX,B.NOTE,B.APP_ID,
+		C.APP_NAME,C.APP_SEQ
+		FROM SYS_RESOURCE_ROLE A
+		LEFT JOIN SYS_RESOURCE B
+		ON A.RESOURCE_ID = B.RESOURCE_ID
+		LEFT JOIN SYS_APP C
+		ON B.APP_ID = C.APP_ID
+		WHERE A.ROLE_ID = #{ROLE_ID}
+		<if test="APP_ID !=NULL and APP_ID!='' ">
+			AND B.APP_ID = #{APP_ID}
+		</if>
+		ORDER BY C.APP_SEQ ASC,B.RESOURCE_INDEX ASC
+	</select>
+	<!-- 查询数据库内的配置权限信息 -->
+	<select id="getResourceJson" parameterType="map" resultType="map">	
+		SELECT B.RESOURCE_ID,B.RESOURCE_URL URL,RESOURCE_NAME NAME,C.ROLE_ID PERMIT,
+		B.APP_ID APP_ID,D.APP_CONTEXT APP_CONTEXT,
+		B.RESOURCE_INDEX,D.APP_NAME APP_NAME
+		FROM  SYS_RESOURCE B
+		LEFT JOIN SYS_RESOURCE_ROLE A
+		ON A.RESOURCE_ID = B.RESOURCE_ID
+		LEFT JOIN SYS_ROLE C
+		ON A.ROLE_ID = C.ROLE_ID
+		LEFT JOIN SYS_APP D
+		ON D.APP_ID = B.APP_ID
+		ORDER BY D.APP_SEQ ASC,B.RESOURCE_INDEX ASC
+	</select>
+</mapper>

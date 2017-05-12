@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans>
+    <!-- MySQL监控SQL -->
+    <bean id="gatherMySql" class="java.util.HashMap">
+        <constructor-arg>
+            <map>
+                 <!-- Mysql数据库参数配置查询：参数：? -->
+                 <entry key="db-variables" 
+                     value="SHOW GLOBAL VARIABLES WHERE VARIABLE_NAME LIKE ?">
+                 </entry>
+                 
+                 <!-- Mysql数据库运行状态信息：L参数 -->
+                 <entry key="db-status" 
+                     value="SHOW GLOBAL STATUS WHERE VARIABLE_NAME LIKE ?">
+                 </entry>
+                 
+                 <!-- 1、定制参数列表 -->
+                 <entry key="db-custom-variables" 
+                    value="SHOW GLOBAL VARIABLES WHERE VARIABLE_NAME IN('default_storage_engine','tx_isolation','character_set_server','log_bin ','max_connections','lower_case_table_names ','log_bin_trust_function_creators','table_open_cache','query_cache_size','key_buffer_size','read_buffer_size','read_rnd_buffer_size','innodb_open_files','innodb_file_per_table','innodb_buffer_pool_size','log_output','slow_query_log','long_query_time')">
+                 </entry>
+                 
+                 <!-- 2、查询性能状态指标-->
+                 <entry key="db-performance"
+                    value="SHOW GLOBAL STATUS WHERE VARIABLE_NAME IN ('Qcache_hits', 'Com_select', 'Key_reads', 'Key_read_requests', 'Innodb_buffer_pool_reads', 'Innodb_buffer_pool_read_requests','Threads_connected', 'Threads_running')">
+                 </entry>
+                 
+                 <!-- 3、查询死锁数和锁等待数 -->
+                 <entry key="db-lock-count" 
+                     value="SELECT A.COUNT AS LOCK_COUNT, B.COUNT AS LOCK_WAIT_COUNT FROM (SELECT COUNT(1) AS COUNT FROM INFORMATION_SCHEMA.INNODB_LOCKS) A, (SELECT COUNT(1) AS COUNT FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS ) B">
+                 </entry>
+                 
+                 <!-- 4、锁等待详细信息 -->
+                 <entry key="db-lockwaits_info" 
+                     value="SELECT A.REQUESTING_TRX_ID,A.BLOCKING_TRX_ID, B.LOCK_MODE, B.LOCK_TYPE, B.LOCK_TABLE, B.LOCK_INDEX, B.LOCK_DATA, DATE_FORMAT(C.TRX_STARTED,'%Y%m%d %T') AS TRX_STARTED, C.TRX_QUERY FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS A, INFORMATION_SCHEMA.INNODB_LOCKS B, INFORMATION_SCHEMA.INNODB_TRX C WHERE A.REQUESTED_LOCK_ID = B.LOCK_ID AND A.REQUESTING_TRX_ID = C.TRX_ID">
+                 </entry>
+                 
+                 <!-- 5、慢查询SQL数 -->
+                 <entry key="db-slow-query-count" 
+                     value="SELECT COUNT(1) AS COUNT FROM MYSQL.SLOW_LOG">
+                 </entry>
+                 <!-- 6、慢查询详细信息 -->
+                 <entry key="db-slow-variables" 
+                     value="SHOW GLOBAL VARIABLES WHERE VARIABLE_NAME LIKE 'slow_query_log' OR VARIABLE_NAME LIKE 'long_query_time'">
+                 </entry>
+                 <entry key="db-slow-queries-info" 
+                     value="SELECT DATE_FORMAT(START_TIME,'%Y-%c-%d %T') AS START_TIME, USER_HOST, TIME_TO_SEC(QUERY_TIME) AS QUERY_TIME, TIME_TO_SEC(LOCK_TIME) AS LOCK_TIME, ROWS_SENT, ROWS_EXAMINED, DB, LAST_INSERT_ID,INSERT_ID, SERVER_ID,SQL_TEXT FROM MYSQL.SLOW_LOG WHERE START_TIME &gt;= ? ORDER BY START_TIME DESC, QUERY_TIME DESC">
+                 </entry>
+                 
+                 <!-- 7、二进制日志 -->
+                 <entry key="db-binary-logs"
+                     value="SHOW BINARY LOGS">
+                 </entry>
+                 <!-- 8、主数据库当前正在使用的二进制日志 -->
+                 <entry key="db-cur-master-log"
+                     value="SHOW MASTER STATUS">
+                 </entry>
+                 
+                 <!-- 9、主从复制状态：从属数据库显示 -->
+                 <entry key="db-slave-status" 
+                     value="SHOW SLAVE STATUS">
+                 </entry>
+                 
+                 <!-- 10、当前数据库连接信息 -->
+                 <entry key="db-processlist" 
+                     value="SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO FROM INFORMATION_SCHEMA.PROCESSLIST WHERE HOST !='' ORDER BY STATE DESC">
+                 </entry>
+                 <!-- 11、当前执行SQL数 -->
+                 <entry key="db-cur-sql-count" 
+                     value="SELECT COUNT(1) AS EXEC_COUNT FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO !='' AND STATE !=''">
+                 </entry>
+                 
+                 <!-- 12、 计算TPS用状态值 -->
+                 <entry key="db-tps-status" 
+                     value="SHOW GLOBAL STATUS WHERE VARIABLE_NAME IN ('Com_commit','Com_rollback')">
+                 </entry>
+                 
+                 <!-- 13、执行时间最长的TOPSQL的平均执行时间 -->
+                 <entry key="db-top-execTime" 
+                     value="SELECT CONVERT(AVG(A.QUERY_TIME),DECIMAL(17,2)) AS AVG_QUERY_TIME FROM (SELECT A.* FROM (SELECT TIME_TO_SEC(QUERY_TIME) AS QUERY_TIME FROM MYSQL.SLOW_LOG) A ORDER BY A.QUERY_TIME DESC LIMIT 0,?) A">
+                 </entry>
+            </map>
+        </constructor-arg>
+    </bean>
+    
+    <bean id="topMySql" class="java.util.HashMap">
+        <constructor-arg>
+        <!-- MySql -->
+            <map>
+                 <!-- 1、当前执行的SQL语句 -->
+                 <entry key="cur-sql" 
+                     value="SELECT ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO AS SQL_TEXT FROM INFORMATION_SCHEMA.PROCESSLIST WHERE INFO !='' AND STATE !=''">
+                 </entry>
+                 
+                 <!--查询sql语句 -->
+                 <entry key="querySqlById"
+                     value="SHOW PROFILES">
+                 </entry>
+                 
+                 <!--判断MySQL是否支持x$statement_analysis视图 -->
+                 <entry key="isStatementAnalysis"
+                     value="SELECT COUNT(1) AS COUNT FROM INFORMATION_SCHEMA.VIEWS WHERE INFORMATION_SCHEMA.VIEWS.TABLE_NAME='x$statement_analysis' AND INFORMATION_SCHEMA.VIEWS.TABLE_SCHEMA='sys'">
+                 </entry>
+                 
+                 <!-- 2、平均执行时间最长的TOP SQL -->
+                 <entry key="top-sql-execTime" 
+                     value="SELECT A.* FROM (SELECT TIME_TO_SEC(QUERY_TIME) AS QUERY_TIME, TIME_TO_SEC(LOCK_TIME) AS LOCK_TIME, ROWS_SENT, ROWS_EXAMINED, SQL_TEXT FROM MYSQL.SLOW_LOG) A ORDER BY A.QUERY_TIME DESC LIMIT 0,?">
+                 </entry>
+                 <!-- 3、平均执行时间最长的TOP SQL:5.7.x -->
+                 <entry key="top-sql-avg-execTime" 
+                     value="SELECT QUERY AS SQL_TEXT, EXEC_COUNT AS EXEC_COUNT, ROUND(AVG_LATENCY/1000000000000,2) AS AVG_TIME_S, DATE_FORMAT(LAST_SEEN,'%Y%m%d %T') AS LAST_SEEN FROM sys.x$statement_analysis WHERE EXEC_COUNT &gt;=?  ORDER BY AVG_LATENCY DESC LIMIT 0,?">
+                 </entry>
+                 <!-- 4、执行次数最多的TOP SQL:5.7.x -->
+                 <entry key="top-sql-execCount" 
+                     value="SELECT QUERY AS SQL_TEXT, EXEC_COUNT AS EXEC_COUNT, ROUND(AVG_LATENCY/1000000000000,2) AS AVG_TIME_S, DATE_FORMAT(LAST_SEEN,'%Y%m%d %T') AS LAST_SEEN FROM sys.x$statement_analysis ORDER BY EXEC_COUNT DESC LIMIT 0,?">
+                 </entry>
+            </map>
+        </constructor-arg>
+    </bean>
+</beans>

@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.alarm.dao.AlarmMapper">
+	<!-- 1 业务系统当前所有预警 -->
+	<select id="queryBizCurAlarms" parameterType="string" resultType="map">
+		SELECT A.RES_ID, A.RULE_ID, A.CREATE_TIME, A.LAST_TIME, A.STATUS, A.VALUE, A.NOTE
+			 , B.RES_NAME, B.CATEGORY, B.SUBTYPE
+			 , C.RES_ID AS BIZ_ID, C.RES_NAME AS BIZ_ID
+			 , D.RULE_NAME, D.INDICATOR_NAME, D.INDICATOR_KEY, D.FORMULA, D.THRESHOLD, D.IMPACT, D.RULE_DETAIL
+		FROM ITM_ALARM_SNAP A, ITM_CMDB B, ITM_CMDB C, ITM_INDICATOR_RULE D
+		WHERE A.RES_ID = B.RES_ID 
+		  AND B.BIZ_ID = C.RES_ID
+		  AND C.RES_ID = #{value}
+		  AND A.RES_ID = D.RES_ID
+		  AND A.RULE_ID = D.RULE_ID
+		  AND A.STATUS = '0'
+		ORDER BY A.LAST_TIME DESC, A.CREATE_TIME DESC
+	</select>
+	
+	<!-- 2 查询预警记录 -->
+	<select id="queryAlarmSnap" parameterType="map" resultType="map">
+		SELECT A.RES_ID, A.RULE_ID, A.CREATE_TIME, A.LAST_TIME, A.STATUS, A.VALUE, A.IS_PUSHED
+            , B.RULE_NAME, B.INDICATOR_NAME, B.INDICATOR_KEY, B.FORMULA, B.THRESHOLD, B.IMPACT, B.RULE_DETAIL
+        FROM ITM_ALARM_SNAP A, ITM_INDICATOR_RULE B
+        WHERE A.RULE_ID = B.RULE_ID AND A.RES_ID = B.RES_ID
+        <if test="RES_ID != null">
+            AND A.RES_ID = #{RES_ID}
+        </if>
+        <if test="RULE_ID != null">
+            AND A.RULE_ID = #{RULE_ID}
+        </if>
+        <if test="CREATE_TIME != null">
+            AND A.CREATE_TIME = #{CREATE_TIME}
+        </if>
+        <if test="STATUS != null">
+            AND A.STATUS = #{STATUS}
+        </if>
+        <if test="IS_PUSHED != null">
+            AND A.IS_PUSHED = #{IS_PUSHED}
+        </if>
+        <if test="RULE_NAME != null">
+            AND B.RULE_NAME = #{RULE_NAME}
+        </if>
+        <if test="INDICATOR_NAME != null">
+            AND B.INDICATOR_NAME = #{INDICATOR_NAME}
+        </if>
+        <if test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+            AND B.INDICATOR_KEY = #{INDICATOR_KEY}
+        </if>
+        ORDER BY A.LAST_TIME DESC, A.CREATE_TIME DESC, A.RES_ID ASC
+	</select>
+	
+    <!-- 3 插入告警记录 -->
+    <insert id="insertAlarmSnap" parameterType="map">
+        INSERT INTO ITM_ALARM_SNAP(RES_ID, RULE_ID, CREATE_TIME, LAST_TIME, STATUS, VALUE, NOTE, IS_PUSHED) 
+        VALUES(
+	        #{RES_ID, jdbcType=VARCHAR},
+	        #{RULE_ID, jdbcType=VARCHAR},
+	        #{CREATE_TIME, jdbcType=VARCHAR},
+	        #{LAST_TIME, jdbcType=VARCHAR},
+	        #{STATUS, jdbcType=CHAR},
+	        #{VALUE, jdbcType=VARCHAR},
+	        #{NOTE, jdbcType=VARCHAR},
+	        '0'
+        )
+    </insert>
+    
+    <!-- 4 更新告警记录 -->
+    <update id="updateAlarmSnap" parameterType="map">
+        UPDATE ITM_ALARM_SNAP
+            SET RES_ID = #{RES_ID, jdbcType=VARCHAR}
+              <if test="LAST_TIME != null">
+                , LAST_TIME = #{LAST_TIME, jdbcType=VARCHAR}
+              </if>
+              <if test="VALUE != null">
+                , VALUE = #{VALUE, jdbcType=VARCHAR}
+              </if>
+                , IS_PUSHED = '0'
+            WHERE RES_ID = #{RES_ID}
+              AND RULE_ID = #{RULE_ID}
+              AND STATUS = '0'
+              <if test="CREATE_TIME != null">
+                  AND CREATE_TIME = #{CREATE_TIME}
+              </if>
+    </update>
+    
+    <!-- 5 更新告警记录：关闭告警 -->
+    <update id="closeAlarm" parameterType="map">
+        UPDATE ITM_ALARM_SNAP
+            SET IS_PUSHED = '0', STATUS = '1'
+              <if test="LAST_TIME != null">
+                , LAST_TIME = #{LAST_TIME, jdbcType=VARCHAR}
+              </if>
+              <if test="VALUE != null">
+                , VALUE = #{VALUE, jdbcType=VARCHAR}
+              </if>
+            WHERE RES_ID = #{RES_ID}
+              <if test="RULE_ID != null">
+                  AND RULE_ID = #{RULE_ID}
+              </if>
+              <if test="CREATE_TIME != null">
+                  AND CREATE_TIME = #{CREATE_TIME}
+              </if>
+               AND STATUS = '0'
+    </update>
+    
+    <!-- 6 删除告警记录 -->
+    <delete id="deleteAlarmSnap" parameterType="map">
+        DELETE FROM ITM_ALARM_SNAP 
+        WHERE 1=1
+        <if test="RES_ID != null">
+            AND RES_ID = #{RES_ID}
+        </if>
+        <if test="RULE_ID != null">
+            AND RULE_ID = #{RULE_ID}
+        </if>
+        <if test="CREATE_TIME != null">
+            AND CREATE_TIME = #{CREATE_TIME}
+        </if>
+        <if test="STATUS != null">
+            AND STATUS = #{STATUS}
+        </if>
+        <if test="IS_PUSHED != null">
+            AND IS_PUSHED = #{IS_PUSHED}
+        </if>
+    </delete>
+    
+    <!--1、 根据查询条件查询告警信息 -->
+    <select id="getAlarmListByCase" parameterType="map" resultType="map">
+        SELECT A.RES_ID, A.RULE_ID, A.CREATE_TIME, A.LAST_TIME, A.VALUE, A.STATUS
+               , B.RES_NAME, B.IP, R.RULE_NAME, R.RULE_DETAIL, R.INDICATOR_KEY, R.FORMULA, R.THRESHOLD
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B, ITM_INDICATOR_RULE R
+        WHERE A.RES_ID = B.RES_ID
+          AND A.RULE_ID = R.RULE_ID
+          AND A.RES_ID = R.RES_ID
+		  AND B.IS_USE='1'
+          <if test="res_nameSearch != null">
+              AND B.RES_NAME LIKE '%'||#{res_nameSearch}||'%'
+          </if>
+          <if test="statusSearch != null">
+              AND A.STATUS = #{statusSearch}
+          </if>
+          <if test="ipSearch != null">
+              AND B.IP LIKE '%'||#{ipSearch}||'%'
+          </if>
+          <if test="createTimeSearch != null">
+              AND A.CREATE_TIME LIKE '%'||#{createTimeSearch}||'%'
+          </if>
+          <if test="biz_Search != null">
+              AND B.BIZ_ID = #{biz_Search}
+          </if>
+          ORDER BY A.STATUS, A.LAST_TIME DESC, A.CREATE_TIME DESC, A.RES_ID
+    </select>
+    <!--2、 按照资源类型分别统计某时间点之后的告警数量 -->
+    <select id="getAlarmCountByCategory" parameterType="map" resultType="map">
+        SELECT B.CATEGORY AS NAME, COUNT(CATEGORY) AS VALUE
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B
+        WHERE A.RES_ID = B.RES_ID
+		AND B.IS_USE='1'
+		<if test="lasttime != null">
+              AND A.LAST_TIME >= #{lasttime}
+        </if>
+		GROUP BY B.CATEGORY
+    </select>
+    <!--2-1、 按照资源子类型分别统计某时间点之后的告警数量 -->
+    <select id="getAlarmCountBySubtype" parameterType="map" resultType="map">
+        SELECT B.SUBTYPE AS NAME, COUNT(SUBTYPE) AS VALUE
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B
+        WHERE A.RES_ID = B.RES_ID
+		AND B.IS_USE='1'
+		<if test="lasttime != null">
+              AND A.LAST_TIME >= #{lasttime}
+        </if>
+		GROUP BY B.SUBTYPE
+    </select>
+    <!--3、 按日期 统计告警数目 -->
+    <select id="getAlarmCountByDate" parameterType="map" resultType="map">
+        SELECT LEFT(A.LAST_TIME,8) AS ADATE, COUNT(*) AS NUM
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B
+        WHERE A.RES_ID = B.RES_ID
+		AND  B.IS_USE='1'
+		<if test="lasttime != null">
+              AND A.LAST_TIME >= #{lasttime}
+        </if>
+		 GROUP BY ADATE ORDER BY ADATE
+    </select>
+    <!--4、  根据资源查询告警数目   TOP10-->
+    <select id="getAlarmCountByCmdb" parameterType="map" resultType="map">
+	    SELECT B.RES_ID,B.RES_NAME, B.IP,B.CATEGORY AS NAME,COUNT(*),AVG(A.LAST_TIME::TIMESTAMP - A.CREATE_TIME::TIMESTAMP) AS DURATION
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B
+        WHERE A.RES_ID = B.RES_ID
+		AND B.IS_USE='1' 
+		<if test="lasttime != null">
+              AND A.LAST_TIME >= #{lasttime}
+        </if>
+		 GROUP BY B.RES_ID  ORDER BY COUNT DESC LIMIT  10
+    </select>
+    <!--5、 根据告警规则查询告警   TOP10 -->
+    <select id="getAlarmCountByRule" parameterType="map" resultType="map">
+		SELECT B.RES_ID, A.RULE_ID, B.RES_NAME, B.IP, R.RULE_NAME,COUNT(*),AVG(A.LAST_TIME::TIMESTAMP - A.CREATE_TIME::TIMESTAMP) AS DURATION
+        FROM ITM_ALARM_SNAP A, ITM_CMDB B, ITM_INDICATOR_RULE R
+        WHERE A.RES_ID = B.RES_ID
+        AND A.RULE_ID = R.RULE_ID
+        AND A.RES_ID = R.RES_ID
+		AND B.IS_USE='1'  
+		<if test="lasttime != null">
+              AND A.LAST_TIME >= #{lasttime}
+        </if>
+		 GROUP BY B.RES_ID,A.RULE_ID,R.RULE_NAME ORDER BY COUNT DESC LIMIT 10
+    </select>
+</mapper>

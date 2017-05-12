@@ -1,0 +1,64 @@
+{
+	defaultType:"default", 
+	menuConfig:{
+		default:[
+			{
+				icon:'fa fa-home',
+				text:'运维监控台',
+				url:'/monitor/bizsys/console.html',
+			},
+			{
+				icon:'fa fa-file-word-o',
+				text:'运维报告',
+				url:'/itm/dashbord',
+			},
+			{
+				icon:'fa fa-cogs',
+				text:'资源管理',
+				url:'system/role/init',
+			},
+			{
+				icon:'fa fa-exclamation-triangle',
+				text:'预警管理',
+				children:[
+					{
+						url:'system/office/index',
+						icon:'',
+						text:'预警指标'
+					},
+					{
+						url:'system/office/index',
+						icon:'',
+						text:'预警规则'
+					}
+				]
+			},
+			{
+				url:'',
+				icon:'fa fa-database',
+				text:'SQL预警接口'
+			},
+			{
+				url:'',
+				icon:'fa fa-users',
+				text:'联系人管理'
+			},
+			{
+				url:'',
+				icon:'fa fa-clock-o',
+				text:'定时任务'
+			},
+			{
+				url:'',
+				icon:'fa fa-envelope',
+				text:'邮箱服务'
+			},
+			{
+				url:'',
+				icon:'fa fa-connectdevelop',
+				text:'组件版本'
+			}
+		]
+		
+	}
+}

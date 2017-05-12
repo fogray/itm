@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.resource.quartz.service.QuartzServiceMapper">
+	<!-- 查询所有定时任务数据 -->
+	<select id="getQuartzMethod" parameterType="map" resultType="map">
+		SELECT * FROM ITM_QUARTZ WHERE '1'='1'
+		<if test="class_nameSearch != null">
+			AND CLAZZ like CONCAT(CONCAT('%',#{class_nameSearch}),'%')
+		</if>
+		<if test="is_startSearch != null">
+			AND IS_START = #{is_startSearch}
+		</if>
+		<if test="CLAZZ != null">
+			AND CLAZZ = #{CLAZZ}
+		</if>
+		<if test="EXEC_METHOD != null">
+			AND EXEC_METHOD = #{EXEC_METHOD}
+		</if>
+	</select>
+	<!-- 插入一条定时任务数据 -->
+	<insert id="insertQuartz" parameterType="map">
+		INSERT INTO ITM_QUARTZ(
+		QUARTZ_NAME,
+		CLAZZ,
+		EXEC_METHOD,
+		IS_START,
+		QUARTZ_TIME,
+		DESCR
+		) VALUES (
+		#{QUARTZ_NAME, jdbcType=VARCHAR},
+		#{CLAZZ, jdbcType=VARCHAR},
+		#{EXEC_METHOD, jdbcType=VARCHAR},
+		#{IS_START, jdbcType=CHAR},
+		#{QUARTZ_TIME, jdbcType=VARCHAR},
+		#{DESCR, jdbcType=VARCHAR}
+		)
+	</insert>
+	<!-- 删除一条定时任务 -->
+	<delete id="deleteQuartz" parameterType="map">
+		DELETE FROM ITM_QUARTZ WHERE CLAZZ=#{CLAZZ} AND EXEC_METHOD=#{EXEC_METHOD}
+	</delete>
+	<!-- 更新一条定时任务数据 -->
+	<update id="updateQuartz" parameterType="map">
+		UPDATE ITM_QUARTZ
+		SET
+		IS_START = #{IS_START, jdbcType=CHAR},
+		QUARTZ_TIME = #{QUARTZ_TIME, jdbcType=VARCHAR},
+		DESCR = #{DESCR, jdbcType=VARCHAR}
+		WHERE CLAZZ = #{CLAZZ} AND EXEC_METHOD = #{EXEC_METHOD}
+	</update>
+</mapper>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xmlns:context="http://www.springframework.org/schema/context"
+  xmlns:mvc="http://www.springframework.org/schema/mvc"
+  xmlns:aop="http://www.springframework.org/schema/aop" 
+  xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+    http://www.springframework.org/schema/aop  http://www.springframework.org/schema/aop/spring-aop-3.0.xsd  ">
+
+	 <context:component-scan base-package="com.inspur" use-default-filters="false">
+	 	<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller" /> 
+    	<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Service" />   
+	 </context:component-scan>
+	 
+	 <!-- 为spring容器中那些配置@Aspectj切面的bean创建代理 -->
+     <aop:aspectj-autoproxy />
+	 
+	<!-- 
+	默认的注解映射的支持 
+	 如果使用了<mvc:annotation-driven />， 它会自动注册DefaultAnnotationHandlerMapping 与AnnotationMethodHandlerAdapter 
+	 这两个bean,所以就没有机会再给它注入interceptors属性，就无法指定拦截器。
+	<mvc:annotation-driven /> -->  
+	<mvc:annotation-driven>
+		<mvc:message-converters>
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<property name="supportedMediaTypes">
+		        	<list>
+		        		<value>application/json;charset=UTF-8</value>
+		        		<value>text/xml;charset=UTF-8</value>
+		        		<value>text/html;charset=UTF-8</value>
+		        	</list>
+				</property>
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+	
+    <bean class="org.springframework.web.servlet.view.ContentNegotiatingViewResolver">
+	    <property name="mediaTypes">
+	      <map>
+	        <entry key="json"  value="application/json" />
+	        <entry key="xml" value="text/xml" />
+	        <entry key="htm" value="text/html" />
+	      </map>
+	    </property>
+	    <property name="defaultContentType" value="application/json" />
+  	</bean>
+  
+    <!--配置拦截器, 多个拦截器,顺序执行 -->
+    <mvc:interceptors>
+        <mvc:interceptor> 
+        	<mvc:mapping path="/**" />
+            <bean class="com.inspur.inteceptor.AuthInteceptor"></bean>
+        </mvc:interceptor>
+        <!-- 当设置多个拦截器时，先按顺序调用preHandle方法，然后逆序调用每个拦截器的postHandle和afterCompletion方法 -->
+    </mvc:interceptors>
+         
+  	<mvc:default-servlet-handler/> 
+    <!-- 对静态资源文件的访问 -->
+	<mvc:resources mapping="/skins/**" location="/skins/" cache-period="31556926"/>  
+	<mvc:resources mapping="/page/**" location="/webpage/" cache-period="31556936"/> 
+	
+	<!-- 定时任务 监听器-->
+  	<bean class="com.inspur.itm.resource.quartz.service.QuartzMethodGroup" init-method="doRegisterQuartz"> 
+  	</bean>
+	
+</beans>

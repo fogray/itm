@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="gb2312" ?>  
+  
+<taglib xmlns="http://java.sun.com/xml/ns/j2ee"  
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"  
+  xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-jsptaglibrary_2_0.xsd"  
+  version="2.0">  	      
+  <tlib-version>1.0</tlib-version>  
+  <short-name>lambofn</short-name>  
+  <uri>/lambo/fn</uri>  
+    
+  <!-- JSTL自定义函数  用来判断url是否具有权限-->  
+  <function>  
+    <name>urlHasPermit</name>  
+    <function-class>com.inspur.lambo.framework.tag.LamboFunction</function-class>  
+    <function-signature>boolean urlHasPermit(java.lang.String)</function-signature>  
+  </function>  
+  
+  <!-- JsonUtil -->
+  <function>
+    <description>对象转换JSON字符串</description>
+    <name>toJson</name>
+    <function-class>com.inspur.lambo.framework.util.JsonUtil</function-class>
+    <function-signature>java.lang.String object2json(java.lang.Object)</function-signature>
+    <example>${lambofn:toJson(object)}</example>  
+  </function>
+  
+   <!-- DictUtils -->
+  <function>
+    <description>获取字典值</description>
+    <name>getEnumValue</name>
+    <function-class>com.inspur.lambo.framework.util.EnumsUtil</function-class>
+    <function-signature>java.util.String getEnumValue(java.lang.String, java.lang.String)</function-signature>
+    <example>${lambofn:getEnumValue(key, type)}</example>  
+  </function>
+
+  <function>
+    <description>获取字典列表</description>
+    <name>getEnumList</name>
+    <function-class>com.inspur.lambo.framework.util.EnumsUtil</function-class>
+    <function-signature>java.lang.List getEnumList(java.lang.String)</function-signature>
+    <example>${lambofn:getEnumList(type)}</example>  
+  </function>
+  
+  <function>
+    <description>获取字典map</description>
+    <name>getEnumMap</name>
+    <function-class>com.inspur.lambo.framework.util.EnumsUtil</function-class>
+    <function-signature>java.util.Map getEnumMap(java.lang.String)</function-signature>
+    <example>${lambofn:getEnumMap(type)}</example>  
+  </function>
+ 
+  <function>
+    <description>获取字典list的json格式</description>
+    <name>getEnumListJson</name>
+    <function-class>com.inspur.lambo.framework.util.EnumsUtil</function-class>
+    <function-signature>java.lang.String getEnumListJson(java.lang.String)</function-signature>
+    <example>${lambofn:getEnumListJson(type)}</example>  
+  </function>
+  
+  <function>
+    <description>获取字典map的json格式</description>
+    <name>getEnumMapJson</name>
+    <function-class>com.inspur.lambo.framework.util.EnumsUtil</function-class>
+    <function-signature>java.lang.String getEnumMapJson(java.lang.String)</function-signature>
+    <example>${lambofn:getEnumMapJson(type)}</example>  
+  </function>
+
+  
+</taglib> 

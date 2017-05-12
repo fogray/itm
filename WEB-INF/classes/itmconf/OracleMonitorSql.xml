@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans>
+    <!--Oracle监控SQL-->
+    <bean id="gatherOrclSql" class="java.util.HashMap">
+        <constructor-arg>
+            <map>
+                 <!-- 1、基本信息 -->
+                 <entry key="basic-info" value="SELECT INSTANCE_NAME, VERSION, TO_CHAR(STARTUP_TIME,'YYYYMMDD HH24:MI:SS') AS STARTUP_TIME, (SYSDATE - STARTUP_TIME)*24*60*60 UP_TIME , DATABASE_STATUS FROM V$INSTANCE"></entry>
+                 <entry key="last-backup-time" value="SELECT TO_CHAR(MAX(TIME),'YYYYMMDD HH24:MI:SS') AS LAST_BACKUP FROM SYS.V_$BACKUP WHERE TIME IS NOT NULL"></entry>
+                 
+                 <!-- 2、会话信息 -->
+                 <entry key="session-info" value="SELECT A.ALL_SESSIONS, B.ACTIVE_SESSIONS FROM (SELECT COUNT(1) AS ALL_SESSIONS FROM V$SESSION WHERE USERNAME IS NOT NULL AND SQL_ID IS NOT NULL) A,(SELECT COUNT(1) as ACTIVE_SESSIONS FROM V$SESSION WHERE STATUS='ACTIVE' AND USERNAME IS NOT NULL AND SQL_ID IS NOT NULL) B"></entry>
+                 
+                 <!-- 3、表空间信息 -->
+                <entry key="tbsp-info" value="SELECT A.TABLESPACE_NAME, CASE WHEN B.AUTOEXTENSIBLE IS NOT NULL THEN 'YES' ELSE 'NO' END AUTOEXTENSIBLE, A.STATUS ONLINE_STATUS, ROUND(TOTAL_SPACE_SZ/1024) SUM_SPACE_KB, ROUND((TOTAL_SPACE_SZ - NVL(FREE_SPACE, 0))/1024) USED_SPACE_KB, ROUND((1-NVL(FREE_SPACE, 0)/TOTAL_SPACE_SZ)*100, 2) USED_RATE, ROUND(FREE_SPACE/1024) FREE_SPACE_KB 
+                                                FROM DBA_TABLESPACES A, ( SELECT TABLESPACE_NAME, SUM(BYTES) TOTAL_SPACE_SZ FROM DBA_DATA_FILES GROUP BY TABLESPACE_NAME) D, ( SELECT TABLESPACE_NAME, SUM(BYTES) FREE_SPACE FROM DBA_FREE_SPACE GROUP BY TABLESPACE_NAME) F 
+                                                ,(SELECT TABLESPACE_NAME, AUTOEXTENSIBLE FROM(SELECT B.TABLESPACE_NAME,  B.AUTOEXTENSIBLE, ROW_NUMBER() OVER (PARTITION BY B.TABLESPACE_NAME ORDER BY B.AUTOEXTENSIBLE DESC) AS ROW_NO FROM DBA_DATA_FILES B ) WHERE ROW_NO=1) B
+                                                WHERE A.TABLESPACE_NAME = D.TABLESPACE_NAME AND D.TABLESPACE_NAME = F.TABLESPACE_NAME(+) AND D.TABLESPACE_NAME = B.TABLESPACE_NAME(+) AND B.AUTOEXTENSIBLE(+) = 'YES'
+                                              UNION ALL SELECT D.TABLESPACE_NAME, G.AUTOEXTENSIBLE, G.STATUS ONLINE_STATUS, ROUND(H.TABLESPACE_SIZE/1024) SUM_SPACE_KB, ROUND(H.USED_SPACE/1024) USED_SPACE_KB, ROUND(H.USED_SPACE/H.TABLESPACE_SIZE*100, 2) USED_RATE, ROUND(H.FREE_SPACE/1024) FREE_SPACE_KB 
+                                                FROM ( SELECT TABLESPACE_NAME, SUM (BYTES) TOTAL_SPACE_SZ FROM DBA_TEMP_FILES GROUP BY TABLESPACE_NAME, AUTOEXTENSIBLE, STATUS) D 
+                                                , ( SELECT * FROM(SELECT TABLESPACE_NAME, AUTOEXTENSIBLE, STATUS, ROW_NUMBER() OVER(PARTITION BY TABLESPACE_NAME ORDER BY AUTOEXTENSIBLE DESC) AS ROW_NO FROM DBA_TEMP_FILES) WHERE ROW_NO=1)G
+                                                , (SELECT TABLESPACE_NAME, TABLESPACE_SIZE, FREE_SPACE, (TABLESPACE_SIZE-FREE_SPACE) USED_SPACE FROM DBA_TEMP_FREE_SPACE) H
+                                                WHERE D.TABLESPACE_NAME = H.TABLESPACE_NAME(+) AND D.TABLESPACE_NAME = G.TABLESPACE_NAME ORDER BY SUM_SPACE_KB DESC">
+                </entry>
+                
+                <!-- 4、SGA最大值 -->
+                <entry key="sga-max-size" value="SELECT ROUND(SUM(VALUE)/1024/1024) SGA_MAX_M FROM V$SGA"></entry>
+                <!-- 5、当前SGA大小、大型池大小 、Java池大小、SGA高速缓存大小、SGA共享池大小 -->
+                <entry key="sga-detail-info" value="SELECT ROUND(SUM(BYTES)/1024/1024) SGA_CURRENTSIZE_M, ROUND(SUM(DECODE(POOL,'large pool',BYTES,0))/1024/1024) LARGE_POOLSIZE_M,    ROUND(SUM(DECODE(POOL,'java pool',BYTES,0))/1024/1024) JAVA_POOLSIZE_M, ROUND(SUM(DECODE(POOL,'shared pool',BYTES,0))/1024/1024) SHARED_POOLSIZE_M, ROUND(SUM(DECODE(NAME,'buffer_cache',BYTES,0))/1024/1024) BUFFER_CACHESIZE_M 
+                                                    FROM V$SGASTAT">
+                </entry>
+                
+                <!-- 6、PGA可分配最大内存、当前分配内存、已使用大小  -->
+                <entry key="pga-detail-info" value="SELECT ROUND(SUM(DECODE(NAME,'maximum PGA allocated',VALUE,0))/1024/1024) AS PGA_MAX_SZ_M, ROUND(SUM(DECODE(NAME,'total PGA allocated',VALUE,0))/1024/1024) AS PGA_ALLOCATED_SZ_M, ROUND(SUM(DECODE(NAME,'total PGA inuse',VALUE,0))/1024/1024) AS PGA_USED_SZ FROM V$PGASTAT ">
+                </entry>
+                
+                <!-- 7、高速缓存命中率 -->
+                <entry key="cache_hit_ration" value="SELECT VALUE CACHE_HIT_RATION FROM V$PGASTAT WHERE NAME='cache hit percentage'"></entry>
+                
+                 <!-- 8、数据缓冲池命中率计算 -->
+                 <entry key="physical-reads" value="SELECT VALUE FROM V$SYSSTAT WHERE NAME ='physical reads'"></entry>
+                 <entry key="physical-reads-direct" value="SELECT VALUE FROM V$SYSSTAT WHERE NAME ='physical reads direct'"></entry>
+                 <entry key="physical-reads-direct-lob" value="SELECT VALUE FROM V$SYSSTAT WHERE NAME ='physical reads direct (lob)'"></entry>
+                 <entry key="consistent-gets" value="SELECT VALUE FROM V$SYSSTAT WHERE NAME ='consistent gets'"></entry>
+                 <entry key="db-block-gets" value="SELECT VALUE FROM V$SYSSTAT WHERE NAME = 'db block gets'"></entry>
+                
+                <!-- 9、重做日志组信息 -->
+                <entry key="log-group-info" value="SELECT GROUP#, STATUS, MEMBERS, ARCHIVED, ROUND(BYTES/1024/1024,2) LOG_G_SZ_M, SEQUENCE#, FIRST_CHANGE# FROM V$LOG"></entry>
+                
+                <!-- 10、数据库配置参数-->
+                <entry key="cfg-info" value="SELECT NAME, DISPLAY_VALUE, CASE WHEN NAME = 'processes' THEN '1 用户进程数' WHEN NAME = 'sessions' THEN '2 用户和系统会话数' WHEN NAME = 'open_cursors' THEN '3 每个会话的最大游标数，默认300' WHEN NAME = 'memory_max_target' THEN '4 最大内存大小，为0时非自动管理' WHEN NAME = 'memory_target' THEN '5 内存总大小，为0时非自动管理' WHEN NAME = 'sga_target' THEN '6 SGA内存大小，为0时自动管理SGA' WHEN NAME = 'pga_aggregate_target' THEN '7 PGA内存大小，为0时自动管理PGA' WHEN NAME = 'lock_sga' THEN '8 自动管理时为false，禁用时为ture' ELSE '' END DESCRIPTION FROM V$PARAMETER WHERE NAME IN( 'processes', 'sessions', 'open_cursors', 'memory_max_target', 'memory_target', 'sga_target', 'pga_aggregate_target', 'lock_sga' ) ORDER BY DESCRIPTION "></entry>
+                
+                <!-- 11、当前正在执行的SQL数 -->
+                <entry key="cur-sql-count" value="SELECT COUNT(1) AS COUNT FROM V$SESSION A, V$SQLSTATS B WHERE A.SQL_ID = B.SQL_ID AND A.USERNAME IS NOT NULL AND A.STATUS = 'ACTIVE'"></entry>
+                <!-- 12、当前连接数和当前活动连接数 -->
+                <entry key="cur-session-count" value="SELECT A.COUNT AS TOTAL_COUNT,B.COUNT AS ACTIVE_COUNT FROM (SELECT COUNT(1) COUNT FROM V$SESSION WHERE USERNAME IS NOT NULL AND SQL_ID IS NOT NULL) A, (SELECT COUNT(1) COUNT FROM V$SESSION WHERE USERNAME IS NOT NULL AND STATUS='ACTIVE' AND SQL_ID IS NOT NULL) B"></entry>
+                <!-- 13、当前锁等待数 -->
+                <entry key="cur-lock_waiting-count" value="SELECT COUNT(1) COUNT FROM ( SELECT S.SID, L.CTIME, O.OBJECT_NAME, S.SQL_ID FROM V$SESSION S ,V$LOCK L, DBA_OBJECTS O , V$SQLAREA SA WHERE S.LOCKWAIT IS NOT NULL AND S.SID=L.SID AND L.ID1=O.OBJECT_ID AND S.STATUS='ACTIVE' AND L.REQUEST>0 AND S.SQL_ID=SA.SQL_ID )"></entry>
+                
+                <!-- 14、等待事件活动会话数统计 -->
+                <entry key="wait-sql-count" value="SELECT TO_CHAR(TIME, 'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIME ,
+                                                        SUM(CASE ACTIVITY WHEN 'CPU' THEN 1 ELSE 0 END) CPU, 
+                                                        SUM(CASE ACTIVITY WHEN 'Concurrency' THEN 1 ELSE 0 END) CONCURRENCY, 
+                                                        SUM(CASE ACTIVITY WHEN 'System I/O' THEN 1 ELSE 0 END) SYSTEM_IO, 
+                                                        SUM(CASE ACTIVITY WHEN 'User I/O' THEN 1 ELSE 0 END) USER_IO, 
+                                                        SUM(CASE ACTIVITY WHEN 'Administrative' THEN 1 ELSE 0 END) ADMINISTRATIVE,
+                                                        SUM(CASE ACTIVITY WHEN 'Configuration' THEN 1 ELSE 0 END) CONFIGURATION, 
+                                                        SUM(CASE ACTIVITY WHEN 'Application' THEN 1 ELSE 0 END) APPLICATION, 
+                                                        SUM(CASE ACTIVITY WHEN 'Network' THEN 1 ELSE 0 END) NETWORK, 
+                                                        SUM(CASE ACTIVITY WHEN 'Cluster' THEN 1 ELSE 0 END) CLUSTER#, 
+                                                        SUM(CASE ACTIVITY WHEN 'Queueing' THEN 1 ELSE 0 END) QUEUEING,
+                                                        SUM(CASE ACTIVITY WHEN 'Commit' THEN 1 ELSE 0 END) COMMIT#,
+                                                        SUM(CASE ACTIVITY WHEN 'Scheduler' THEN 1 ELSE 0 END) SCHEDULER,
+                                                        SUM(CASE ACTIVITY WHEN 'Other' THEN 1 ELSE 0 END) OTHER
+                                                FROM (SELECT SAMPLE_TIME TIME, NVL(WAIT_CLASS, 'CPU') ACTIVITY 
+                                                    FROM V$ACTIVE_SESSION_HISTORY WHERE SQL_ID IS NOT NULL ) 
+                                                WHERE TIME &gt; SYSDATE - NUMTODSINTERVAL(1,'HOUR') 
+                                                GROUP BY TIME ORDER BY TIME">
+                </entry>
+                <!-- 15、指定时间段内等待事件会话SQL的详情（参数：开始时间、结束时间，YYYYMMDD HI24:MI:SS） -->
+                <entry key="wait-sql-detail" value="SELECT STATISTIC.*, ROUND(100.0*STATISTIC.COUNT/ALL_SESSION.COUNT, 1) PERCENT, SQLAREA.SQL_FULLTEXT 
+                                                    FROM ( SELECT  NVL(A.WAIT_CLASS, 'CPU') ACTIVITY, A.SQL_ID, COUNT(1) AS COUNT FROM V$ACTIVE_SESSION_HISTORY A
+                                                           WHERE (TO_CHAR(A.SAMPLE_TIME,'YYYYMMDD HH24:MI:SS') BETWEEN ? AND ?) 
+                                                           AND A.SQL_ID IS NOT NULL  
+                                                           GROUP BY A.WAIT_CLASS, A.SQL_ID
+                                                        ) STATISTIC LEFT JOIN  V$SQLAREA SQLAREA ON STATISTIC.SQL_ID = SQLAREA.SQL_ID
+                                                        ,( SELECT COUNT(1) AS COUNT 
+                                                        FROM V$ACTIVE_SESSION_HISTORY A
+                                                        WHERE (TO_CHAR(A.SAMPLE_TIME,'YYYYMMDD HH24:MI:SS') BETWEEN ? AND ?) 
+                                                        AND A.SQL_ID IS NOT NULL 
+                                                    ) ALL_SESSION ORDER BY STATISTIC.COUNT DESC">
+                </entry>
+                <!-- 16、锁等待信息 -->
+                <entry key="lock-waiting" value="SELECT S.SID, L.CTIME, L.TYPE, DECODE(L.REQUEST, 0, 'none', 1, '', 2, 'row-S', 3, 'row-X', 4,'share',5,'S/Row-X',6,'exclusive') AS LMODE, O.OBJECT_NAME, S.SQL_ID, SA.SQL_FULLTEXT FROM V$SESSION S ,V$LOCK L, DBA_OBJECTS O , V$SQLAREA SA WHERE S.LOCKWAIT IS NOT NULL AND S.SID=L.SID AND L.ID1=O.OBJECT_ID AND S.STATUS='ACTIVE' AND L.REQUEST>0 AND S.SQL_ID=SA.SQL_ID">
+                </entry>
+                <!-- 17、ASH报告(参数：开始时间、结束时间) -->
+                <entry key="ash-report" value="SELECT OUTPUT FROM TABLE(DBMS_WORKLOAD_REPOSITORY.ASH_GLOBAL_REPORT_HTML((SELECT DBID FROM V$DATABASE), 1, TO_DATE(?, 'YYYYMMDD HH24:MI:SS'), TO_DATE(?, 'YYYYMMDD HH24:MI:SS')))">
+                </entry>
+                
+                <!-- 18、AWR报告(参数：开始时间、结束时间) -->
+                <entry key="awr-report" value="SELECT OUTPUT FROM TABLE(DBMS_WORKLOAD_REPOSITORY.AWR_GLOBAL_REPORT_HTML((SELECT DBID FROM V$DATABASE), 1, (SELECT MAX(SNAP_ID) AS SNAP_ID FROM DBA_HIST_SNAPSHOT WHERE TO_CHAR(BEGIN_INTERVAL_TIME,'YYYYMMDD HH24:MI:SS') &lt;= ?), (SELECT MAX(SNAP_ID) AS SNAP_ID FROM DBA_HIST_SNAPSHOT WHERE ? &gt;= TO_CHAR(END_INTERVAL_TIME,'YYYYMMDD HH24:MI:SS')), 8))">
+                </entry>
+                
+                <!-- 19、ADDM列表 -->
+                <entry key="addm-task-list" value="SELECT OWNER, TASK_ID, TASK_NAME, CREATED, LAST_MODIFIED, LAST_EXECUTION, STATUS, EXECUTION_START, EXECUTION_END FROM DBA_ADVISOR_TASKS WHERE ADVISOR_NAME='ADDM' ORDER BY TASK_ID DESC">
+                </entry>
+                <!-- 20、ADDM报告(参数：TASK_ID)  -->
+                <entry key="addm-report" value="SELECT DBMS_ADVISOR.GET_TASK_REPORT(TASK_NAME, 'TEXT', 'TYPICAL', 'ALL', OWNER) AS OUTPUT FROM DBA_ADVISOR_TASKS WHERE ADVISOR_NAME='ADDM' AND TASK_ID = ?">
+                </entry>
+                
+                <!-- 21、索引列表 -->
+                <entry key="index-list-info" value="SELECT IND.TABLE_OWNER, IND.TABLE_NAME,IND.INDEX_NAME, IND.INDEX_TYPE , NVL(IND.LAST_ANALYZED, TO_DATE('0001-01-01 00:00:00','YYYY-MM-DD HH24:MI:SS')) LAST_ANALYZED, IND.COMPRESSION, O.CREATED,O.LAST_DDL_TIME, T.NUM_ROWS, ITC.COL_NAMES FROM SYS.USER_INDEXES IND, SYS.USER_OBJECTS O, SYS.USER_TABLES T, (SELECT IC.TABLE_NAME, IC.INDEX_NAME, LISTAGG(IC.COLUMN_NAME, ',') WITHIN GROUP (ORDER BY IC.TABLE_NAME, IC.INDEX_NAME) COL_NAMES FROM SYS.USER_IND_COLUMNS IC GROUP BY IC.TABLE_NAME, IC.INDEX_NAME ) ITC WHERE O.OBJECT_NAME = IND.INDEX_NAME AND IND.TABLE_NAME = T.TABLE_NAME AND ITC.INDEX_NAME = IND.INDEX_NAME AND ITC.TABLE_NAME=IND.TABLE_NAME AND O.OBJECT_TYPE='INDEX' ORDER BY IND.LAST_ANALYZED, IND.TABLE_NAME, IND.INDEX_NAME ASC">
+                </entry>
+                
+                <!-- 22、日志写入速度：ms -->
+                <entry key="log-write-speed" value="SELECT AVERAGE_WAIT*10 AS LOG_WRITE_SPEED  FROM V$SYSTEM_EVENT WHERE EVENT='log file parallel write'">
+                </entry>
+                
+                <!-- 23、事务平均响应时间：s -->
+                <entry key="avg-trans-time" value="SELECT ROUND(AVERAGE_WAIT/100,2) AS AVG_TRANS_TIMES_S FROM V$SYSTEM_EVENT WHERE EVENT = 'log file sync'">
+                </entry>
+                
+                 <!-- 24、TOP n平均执行时间 -->
+                 <entry key="top-execTime" value="SELECT ROUND(AVG(AVG_ELAPSED_TIME),2) AVG_ELAPSED_TIME_S FROM( SELECT * FROM( SELECT DECODE(A.EXECUTIONS, 0, 0, ROUND(A.ELAPSED_TIME/A.EXECUTIONS/1000000, 2)) AVG_ELAPSED_TIME FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY AVG_ELAPSED_TIME DESC )WHERE ROWNUM &lt;=? )"></entry>
+                 
+            </map>
+        </constructor-arg>
+    </bean>
+    
+    <bean id="topOracleSql" class="java.util.HashMap">
+        <constructor-arg>
+        <!-- ORACLE -->
+            <map>
+                <!-- 1、当前执行的SQL语句 -->
+                 <entry key="cur-top-sql" 
+                     value="SELECT A.SQL_ID, A.STATUS, A.SQL_HASH_VALUE, C.SQL_FULLTEXT, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SESSION A, V$SQLSTATS C WHERE A.STATUS = 'ACTIVE' AND A.USERNAME IS NOT NULL AND A.SQL_ID = C.SQL_ID">
+                 </entry>
+                 
+                 <!-- 2、用户CPU时间 TOP SQL -->
+                 <entry key="cpu-top-sql" 
+                    value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM (SELECT A.SQL_ID, ROUND(A.CPU_TIME/1000000) CPU_TIME, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY A.CPU_TIME DESC) WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID">
+                 </entry>
+                 
+                 <!-- 3、平均用户CPU时间 TOP SQL -->
+                 <entry key="avg-cpu-top-sql" 
+                    value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM (SELECT * FROM (SELECT A.SQL_ID, DECODE(A.EXECUTIONS, 0, 0, ROUND(A.CPU_TIME/A.EXECUTIONS/1000000, 2)) AVG_CPU_TIME_S, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP'))ORDER BY AVG_CPU_TIME_S DESC) WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID">
+                 </entry>
+                 
+                 <!--4、io读写 TOP SQL-->
+                 <entry key="io-top-sql" value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM (SELECT A.SQL_ID, A.BUFFER_GETS, A.DISK_READS, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY A.BUFFER_GETS DESC, A.DISK_READS DESC ) WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID"></entry>
+                 
+                 <!-- 5、平均执行时间最长的TOP SQL -->
+                 <entry key="execTime-top-sql" value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM(SELECT * FROM (SELECT A.SQL_ID, DECODE(A.EXECUTIONS, 0, 0, ROUND(A.ELAPSED_TIME/A.EXECUTIONS/1000000, 2)) ELAPSED_TIME, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') AND A.EXECUTIONS &gt;=?) ORDER BY ELAPSED_TIME DESC)WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID"></entry>
+                 
+                 <!-- 6、总执行时间最长的TOP SQL -->
+                 <entry key="total-execTime-top-sql" value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM (SELECT A.SQL_ID, ROUND(A.ELAPSED_TIME/1000000, 0) ELAPSED_TIME_S, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY ELAPSED_TIME DESC)WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID"></entry>
+                 
+                 <!-- 7、执行次数最多的TOP SQL-->
+                 <entry key="execMost-top-sql" value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM(SELECT A.SQL_ID, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY A.EXECUTIONS DESC) WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID"></entry>
+                 
+                 <!-- 8、排序最多的TOP SQL-->
+                 <entry key="orderMost-top-sql" value="SELECT B.*, V.SQL_FULLTEXT FROM(SELECT * FROM(SELECT A.SQL_ID, A.SORTS, A.EXECUTIONS, TO_CHAR(SYSTIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM V$SQLAREA A, DBA_USERS DU WHERE A.PARSING_USER_ID = DU.USER_ID AND DU.DEFAULT_TABLESPACE NOT IN('SYSTEM','SYSAUX','UNDOTBS1','TEMP') ORDER BY A.SORTS DESC)WHERE ROWNUM &lt;=?) B, V$SQLAREA V WHERE B.SQL_ID = V.SQL_ID"></entry>
+                 
+            </map>
+        </constructor-arg>
+    </bean>
+</beans>

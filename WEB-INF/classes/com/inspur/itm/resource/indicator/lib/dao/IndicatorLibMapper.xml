@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.resource.indicator.lib.dao.IndicatorLibMapper">
+  <!-- 查询所有采集指标库列表 -->
+  <select id="queryLib" parameterType="map" resultType="map" >
+      SELECT L.INDICATOR_NAME, L.INDICATOR_DESC, L.CATEGORY, L.SUBTYPE, L.COMPONENT, L.FORMULA, L.THRESHOLD, L.BASE_TIMES, L.TIME_QUANTUM, L.IMPACT, L.IS_INCIDENT, L.IS_RULE, L.IS_USE, L.INDICATOR_USAGE
+      FROM ITM_INDICATOR_LIB L
+      <where> 1=1 
+          <if test="indName != null">
+              AND L.INDICATOR_NAME LIKE '%'||#{indName}||'%'
+          </if>
+          <if test="category != null">
+              AND L.CATEGORY = #{category}
+          </if>
+          <if test="subtype != null">
+              AND L.SUBTYPE LIKE '%'||#{subtype}||'%'
+          </if>
+          <if test="impact != null">
+              AND L.IMPACT = #{impact}
+          </if>
+          <if test="isRule != null">
+              AND L.IS_RULE = #{isRule}
+          </if>
+      </where>
+      ORDER BY L.CATEGORY, L.SUBTYPE, L.COMPONENT, L.IS_USE DESC, L.IS_RULE DESC, L.IMPACT DESC
+   </select>
+    <!-- 查询一条告警指标 -->
+    <select id="getIndicatorLib" parameterType="string" resultType="map">
+        SELECT * FROM ITM_INDICATOR_LIB 
+        WHERE INDICATOR_NAME = #{value}
+    </select>
+</mapper>

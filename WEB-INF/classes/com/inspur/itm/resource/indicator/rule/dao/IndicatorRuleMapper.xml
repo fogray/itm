@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.resource.indicator.rule.dao.IndicatorRuleMapper">
+  <select id="queryRule" parameterType="map" resultType="map">
+    SELECT R.RULE_ID, R.RES_ID, R.RULE_NAME, R.INDICATOR_NAME, R.INDICATOR_KEY, R.FORMULA, R.THRESHOLD, R.BASE_TIMES, R.TIME_QUANTUM, R.IMPACT, R.IS_INCIDENT, R.IS_ENABLE, R.IS_MODIFIED, R.RULE_DETAIL, R.IS_PUSHED, S.RES_NAME, S.IP, L.SUBTYPE
+        FROM ITM_INDICATOR_RULE R,ITM_CMDB S, ITM_INDICATOR_LIB L
+        <where>
+            R.RES_ID = S.RES_ID AND R.INDICATOR_NAME = L.INDICATOR_NAME AND S.IS_USE='1'
+            <if test="RULE_ID != null">
+              AND R.RULE_ID = #{RULE_ID}
+            </if>
+            <if test="RULE_NAME != null">
+                AND R.RULE_NAME like  '%'||#{RULE_NAME}||'%'
+            </if>
+            <if test="INDICATOR_NAME != null">
+                AND R.INDICATOR_NAME LIKE '%'||#{INDICATOR_NAME}||'%'
+            </if>
+            <if test="INDICATOR_KEY != null">
+                AND R.INDICATOR_KEY LIKE '%'||#{INDICATOR_KEY}||'%'
+            </if>
+            <if test="IMPACT != null">
+                AND R.IMPACT =  #{IMPACT}
+            </if>
+            <if test="RES_ID != null">
+                AND R.RES_ID = #{RES_ID}
+            </if>
+            <if test="RES_NAME != null">
+                AND S.RES_NAME LIKE '%'||#{RES_NAME}||'%'
+            </if>
+            <if test="IP != null">
+                AND S.IP LIKE '%'||#{IP}||'%'
+            </if>
+            <if test="SUBTYPE != null">
+                AND L.SUBTYPE = #{SUBTYPE}
+            </if>
+            <if test="IS_ENABLE != null">
+                AND R.IS_ENABLE = #{IS_ENABLE}
+            </if>
+        </where>
+        ORDER BY S.BIZ_ID, R.RES_ID, L.SUBTYPE, R.INDICATOR_NAME, R.IS_ENABLE DESC, R.RULE_ID
+  </select>
+  
+  <!-- 插入告警规则 -->
+  <insert id="insertRule" parameterType="map" >
+      INSERT INTO ITM_INDICATOR_RULE(RULE_ID, RES_ID, RULE_NAME, INDICATOR_NAME, INDICATOR_KEY, FORMULA, THRESHOLD, BASE_TIMES, TIME_QUANTUM, IMPACT, IS_INCIDENT, RULE_DETAIL, IS_MODIFIED, IS_PUSHED) 
+      VALUES ( #{RULE_ID,jdbcType=VARCHAR}, #{RES_ID,jdbcType=VARCHAR}, #{RULE_NAME,jdbcType=VARCHAR}, #{INDICATOR_NAME,jdbcType=VARCHAR},
+          <choose>
+              <when test="INDICATOR_KEY == null">
+                  ' ',
+              </when>
+              <otherwise>
+                  #{INDICATOR_KEY,jdbcType=VARCHAR},
+              </otherwise>
+          </choose>
+          #{FORMULA,jdbcType=VARCHAR}, #{THRESHOLD,jdbcType=VARCHAR}, #{BASE_TIMES,jdbcType=NUMERIC}, #{TIME_QUANTUM,jdbcType=NUMERIC}, #{IMPACT,jdbcType=CHAR}, #{IS_INCIDENT,jdbcType=CHAR},
+          #{RULE_DETAIL,jdbcType=VARCHAR}, '0', '0')
+  </insert>
+  
+  <!-- 根据规则ID和资源ID更新告警规则详细信息 -->
+  <update id="updateRule"  parameterType="map">
+      UPDATE ITM_INDICATOR_RULE 
+      SET RULE_ID=#{RULE_ID}
+      <if test="RULE_NAME != null and RULE_NAME != ''">
+        , RULE_NAME=#{RULE_NAME,jdbcType=VARCHAR}
+      </if>
+      <if test="INDICATOR_NAME != null and INDICATOR_NAME != ''">
+        , INDICATOR_NAME=#{INDICATOR_NAME,jdbcType=VARCHAR}
+      </if>
+      <if test="INDICATOR_KEY != null">
+        , INDICATOR_KEY=#{INDICATOR_KEY,jdbcType=VARCHAR}
+      </if>
+      <if test="THRESHOLD != null">
+        , THRESHOLD=#{THRESHOLD,jdbcType=VARCHAR}
+      </if>
+      <if test="FORMULA != null">
+        , FORMULA=#{FORMULA,jdbcType=VARCHAR}
+      </if>
+      <if test="IS_ENABLE != null">
+        , IS_ENABLE=#{IS_ENABLE,jdbcType=CHAR}
+      </if>
+      <if test="BASE_TIMES != null">
+        , BASE_TIMES=#{BASE_TIMES,jdbcType=NUMERIC}
+      </if>
+      <if test="TIME_QUANTUM != null">
+        , TIME_QUANTUM=#{TIME_QUANTUM,jdbcType=NUMERIC}
+      </if>
+      <if test="IMPACT != null">
+        , IMPACT=#{IMPACT,jdbcType=CHAR}
+      </if>
+      <if test="IS_INCIDENT != null">
+        , IS_INCIDENT=#{IS_INCIDENT,jdbcType=CHAR}
+      </if>
+      <if test="RULE_DETAIL != null">
+        , RULE_DETAIL=#{RULE_DETAIL,jdbcType=CHAR}
+      </if>
+        , IS_MODIFIED=CASE WHEN (FORMULA != #{FORMULA, jdbcType=VARCHAR} OR THRESHOLD != #{THRESHOLD,jdbcType=VARCHAR}
+                                   OR BASE_TIMES != #{BASE_TIMES,jdbcType=NUMERIC} 
+                                   OR TIME_QUANTUM != #{TIME_QUANTUM,jdbcType=NUMERIC} OR IMPACT != #{IMPACT,jdbcType=CHAR})
+                                 THEN '1' ELSE IS_MODIFIED END
+        , IS_PUSHED='0'
+      WHERE  RULE_ID=#{RULE_ID}
+  </update>
+  
+  <!-- 启用或关闭告警规则 -->
+  <update id="updateRuleEnable" parameterType="map">
+      UPDATE ITM_INDICATOR_RULE
+      SET IS_ENABLE = #{IS_ENABLE}, IS_PUSHED='0'
+      WHERE 1=1
+      <if test="rules != null">
+        AND 
+        <foreach collection="rules" open="(" close=")" separator=" OR " item="rule">
+            RULE_ID = #{rule}
+        </foreach>
+      </if>
+  </update>
+  
+  <!-- 删除业务系统下所有资源的预警规则 -->
+  <delete id="deleteRuleByBiz" parameterType="string">
+      DELETE FROM ITM_INDICATOR_RULE WHERE RES_ID IN (SELECT RES_ID FROM ITM_CMDB WHERE BIZ_ID=#{value})
+  </delete>
+  
+  <!-- 根据资源ID删除预警规则 -->
+  <delete id="deleteRuleByRes" parameterType="string">
+      DELETE FROM ITM_INDICATOR_RULE WHERE RES_ID=#{value}
+  </delete>
+  
+  <!-- 根据规则ID删除预警规则 -->
+  <delete id="deleteRuleByRule" parameterType="string">
+      DELETE FROM ITM_INDICATOR_RULE WHERE RULE_ID=#{value}
+  </delete>
+  
+</mapper>

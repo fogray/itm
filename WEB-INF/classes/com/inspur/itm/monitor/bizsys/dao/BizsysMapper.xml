@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.monitor.bizsys.dao.BizsysMapper">
+	
+	<!-- 1 获取业务系统关联的联系人列表 -->
+	<select id="queryContactRelated" parameterType="string" resultType="map">
+		SELECT A.LINKMAN_ID, B.LINKMAN_NAME, B.EMAIL, B.TEL
+		FROM ITM_BIZ_LINKMAN A, ITM_LINKMAN B
+		WHERE A.LINKMAN_ID = B.LINKMAN_ID
+		  AND A.BIZ_ID = #{value}
+		ORDER BY A.LILNKMAN_NAME
+	</select>
+	
+</mapper>

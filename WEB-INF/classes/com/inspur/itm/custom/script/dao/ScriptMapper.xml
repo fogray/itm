@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.custom.script.dao.ScriptMapper">
+	
+	<!-- 1 获取定制Shell脚本任务 -->
+	<select id="queryScriptJob" parameterType="map" resultType="map">
+		SELECT ITS.JOB_ID, ITS.JOB_NAME, ITS.IS_START, ITS.QUARTZ_TIME, ITS.RES_ID, ITS.DESCR, ITS.NOTICE_TYPE, ITS.JOB_STATUS
+		 , CASE WHEN T2.COUNT IS NULL THEN 0 ELSE T2.COUNT END AS EXEC_SCRIPT_COUNT
+		 , CASE WHEN T1.COUNT IS NULL THEN 0 ELSE T1.COUNT END AS TOTAL_SCRIPT_COUNT
+		 , C.RES_NAME
+        FROM ITM_CUSTOM_SCRIPT ITS 
+        LEFT JOIN ITM_CMDB C ON ITS.RES_ID = C.RES_ID
+        LEFT JOIN (SELECT JOB_ID,COUNT(1) AS COUNT 
+                    FROM ITM_CUSTOM_SCRIPT_DETAIL GROUP BY JOB_ID) T1 ON ITS.JOB_ID = T1.JOB_ID
+        LEFT JOIN (SELECT JOB_ID,COUNT(1) AS COUNT 
+                    FROM ITM_CUSTOM_SCRIPT_DETAIL WHERE IS_EXEC='1' GROUP BY JOB_ID) T2 ON ITS.JOB_ID = T2.JOB_ID
+        WHERE 1=1
+        <if test="JOB_ID != null">
+            AND ITS.JOB_ID = #{JOB_ID}
+        </if>
+        <if test="JOB_NAME != null">
+            AND ITS.JOB_NAME like '%'||#{JOB_NAME}||'%'
+        </if>
+        <if test="JOB_NAME != null">
+            AND ITS.JOB_NAME like '%'||#{JOB_NAME}||'%'
+        </if>
+        <if test="IS_START != null">
+            AND ITS.IS_START = #{IS_START}
+        </if>
+        ORDER BY ITS.IS_START DESC, ITS.JOB_ID
+	</select>
+	
+    <!-- 2 获取定制Shell脚本任务明细 -->
+    <select id="queryScriptJobDetail" parameterType="map" resultType="map">
+        SELECT JOB_ID, JOB_DETAIL_ID, SCRIPT_NAME, EXEC_ORDER, IS_EXEC, SCRIPT_TEXT, EXEC_RESULT, SNAPSHOT_TIME
+        FROM ITM_CUSTOM_SCRIPT_DETAIL
+        WHERE JOB_ID = #{JOB_ID}
+        <if test="JOB_DETAIL_ID != null">
+            AND JOB_DETAIL_ID = #{JOB_DETAIL_ID}
+        </if>
+        ORDER BY EXEC_ORDER
+    </select>
+    
+    <!-- 3 插入定制Shell脚本任务 -->
+    <insert id="insertScriptJob" parameterType="map">
+        INSERT INTO ITM_CUSTOM_SCRIPT(JOB_ID, JOB_NAME, IS_START, QUARTZ_TIME, RES_ID, NOTICE_TYPE, DESCR)
+        VALUES(#{JOB_ID}, #{JOB_NAME}, #{IS_START, jdbcType=CHAR}, #{QUARTZ_TIME}, #{RES_ID}, #{NOTICE_TYPE}, #{DESCR, jdbcType=VARCHAR})
+    </insert>
+    
+   <!-- 3-1 更新定制Shell脚本任务 -->
+    <update id="updateScriptJobStatus" parameterType="map">
+        UPDATE ITM_CUSTOM_SCRIPT
+        SET JOB_STATUS = #{JOB_STATUS, jdbcType=VARCHAR}
+        WHERE JOB_ID = #{JOB_ID}
+    </update>
+    
+    <!-- 4 批量插入定制Shell脚本任务明细 -->
+    <insert id="insertScriptJobDetail" parameterType="map">
+        INSERT INTO ITM_CUSTOM_SCRIPT_DETAIL(JOB_ID, JOB_DETAIL_ID, SCRIPT_NAME, EXEC_ORDER, IS_EXEC, SCRIPT_TEXT)
+        VALUES( #{JOB_ID}, #{JOB_DETAIL_ID}, #{SCRIPT_NAME}, #{EXEC_ORDER}, #{IS_EXEC, jdbcType=CHAR}, #{SCRIPT_TEXT})
+    </insert>
+    
+    <!-- 5 删除定制Shell脚本任务 -->
+    <delete id="deleteScriptJob" parameterType="string">
+        DELETE FROM ITM_CUSTOM_SCRIPT WHERE JOB_ID = #{value}
+    </delete>
+    
+    <!-- 6 删除定制Shell脚本任务明细 -->
+    <delete id="deleteScriptJobDetail" parameterType="map">
+        DELETE FROM ITM_CUSTOM_SCRIPT_DETAIL 
+        WHERE JOB_ID = #{JOB_ID} 
+        <if test="JOB_DETAIL_ID != null">
+          AND JOB_DETAIL_ID = #{JOB_DETAIL_ID}
+        </if>
+    </delete>
+    
+    <!-- 7 更新定制Shell脚本任务执行结果 -->
+    <update id="updateExecResult" parameterType="map">
+        UPDATE ITM_CUSTOM_SCRIPT_DETAIL
+        SET EXEC_RESULT = #{EXEC_RESULT, jdbcType=VARCHAR}, SNAPSHOT_TIME = #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+        WHERE JOB_ID = #{JOB_ID} AND JOB_DETAIL_ID = #{JOB_DETAIL_ID}
+    </update>
+    
+    <!-- 8 启用、暂停定制Shell脚本任务 -->
+    <update id="controlScriptJob" parameterType="map">
+        UPDATE ITM_CUSTOM_SCRIPT SET IS_START = #{IS_START}
+        WHERE JOB_ID = #{JOB_ID}
+    </update>
+</mapper>

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.watching.dao.WatchingMapper">
+	<!-- 1 新增实时数据 -->
+	<insert id="insertRuntime" parameterType="map">
+		INSERT INTO ITM_RUNTIME(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME, NOTE, IS_PUSHED)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}, 
+		  #{NOTE, jdbcType=VARCHAR}, '0'
+		)
+	</insert>
+	
+	<!-- 2 删除实时数据 -->
+	<delete id="deleteRuntime" parameterType="map">
+		DELETE FROM ITM_RUNTIME
+		WHERE RES_ID = #{RES_ID}
+        <if test="INDICATOR_NAME != null">
+          AND INDICATOR_NAME = #{INDICATOR_NAME}
+        </if>
+        <if test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+          AND INDICATOR_KEY = #{INDICATOR_KEY}
+        </if>
+	</delete>
+    <!-- 1 插入主机镜像数据 -->
+	<insert id="insertHostSnap" parameterType="map">
+		INSERT INTO ITM_HOST_SNAP(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+		)
+	</insert>
+    <!-- 2 插入数据库镜像数据 -->
+	<insert id="insertDbSnap" parameterType="map">
+		INSERT INTO ITM_DB_SNAP(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+		)
+	</insert>	
+    <!-- 3 插入中间件镜像数据 -->
+	<insert id="insertMwSnap" parameterType="map">
+		INSERT INTO ITM_MW_SNAP(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+		)
+	</insert>
+    <!-- 4 插入中间件镜像数据 -->
+	<insert id="insertBizSnap" parameterType="map">
+		INSERT INTO ITM_BIZ_SNAP(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+		)
+	</insert>
+    <!-- 5 插入中间件镜像数据 -->
+	<insert id="insertHttpSnap" parameterType="map">
+		INSERT INTO ITM_HTTP_SNAP(RES_ID, INDICATOR_NAME, INDICATOR_KEY, VALUE, SNAPSHOT_DATE, SNAPSHOT_TIME)
+		VALUES(
+		  #{RES_ID, jdbcType=VARCHAR}, #{INDICATOR_NAME, jdbcType=VARCHAR},
+		  <choose>
+		  	<when test="INDICATOR_KEY != null and INDICATOR_KEY != ''">
+		  	  #{INDICATOR_KEY, jdbcType=VARCHAR}, 
+		  	</when>
+		  	<otherwise>' ', </otherwise>
+		  </choose> 
+		  #{VALUE, jdbcType=VARCHAR}, #{SNAPSHOT_DATE, jdbcType=VARCHAR}, #{SNAPSHOT_TIME, jdbcType=VARCHAR}
+		)
+	</insert>			
+</mapper>

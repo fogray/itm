@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.resource.cmdb.dao.CmdbMapper">
+	<!-- 获取指定业务系统下的所有资源 -->
+	<select id="queryCmdb" parameterType="map" resultType="map">
+		SELECT A.RES_ID, A.RES_NAME, A.BIZ_ID, A.CATEGORY, A.SUBTYPE, A.IP, A.IP_SEC, A.PORT
+			, A.SNMP_VERSION, A.SNMP_R_COMMUNITY, A.SNMPV3_SEC_LEVEL, A.SNMPV3_USER_NAME, A.SNMPV3_AUTH_PROTOCOL, A.SNMPV3_AUTH_PWD, A.SNMPV3_PRIV_PROTOCOL, A.SNMPV3_PRIV_PWD
+			, A.URL, A.IS_START_SECURITY, A.ACCESS_NAME, A.ACCESS_PWD, A.DB_INSTANCE_NAME
+			, A.APP_MONITOR, A.APP_SESSION, A.IS_MONITOR, A.ENV_TYPE, A.IS_USE, A.IS_PUSHED, A.DESCR, B.RES_NAME AS BIZ_NAME, B.IS_MONITOR AS BIZ_IS_MONITOR, B.ENV_TYPE AS BIZ_ENV_TYPE
+		FROM ITM_CMDB A, ITM_CMDB B
+		WHERE A.BIZ_ID = B.RES_ID 
+		  <if test="RES_ID != null">
+		    AND A.RES_ID = #{RES_ID}
+		  </if>
+		  <if test="RES_NAME != null">
+		    AND A.RES_NAME LIKE '%'||#{RES_ID}||'%'
+		  </if>
+		  <if test="IP != null">
+		    AND A.IP LIKE '%'||#{IP}||'%'
+		  </if>
+		  <if test="BIZ_ID != null">
+		    AND B.RES_ID = #{BIZ_ID}
+		  </if>
+		  <if test="CATEGORY != null">
+		  	AND A.CATEGORY = #{CATEGORY}
+		  </if>
+		  <if test="SUBTYPE != null">
+		  	AND A.SUBTYPE = #{SUBTYPE}
+		  </if>
+		  <if test="IS_MONITOR != null">
+		  	AND A.IS_MONITOR = #{IS_MONITOR}
+		  </if>
+          <if test="ENV_TYPE != null">
+            AND A.ENV_TYPE = #{ENV_TYPE}
+          </if>
+		  AND A.IS_USE = '1' AND B.IS_USE = '1'
+		ORDER BY A.BIZ_ID, A.CATEGORY, A.SUBTYPE, A.IS_MONITOR DESC
+	</select>
+	<!--  -->
+	<select id="queryCmdbGroupById" parameterType="map" resultType="map">
+		SELECT A.RES_ID, A.RES_NAME, A.BIZ_ID, A.CATEGORY, A.SUBTYPE, A.IP, A.IP_SEC, A.PORT
+			, A.SNMP_VERSION, A.SNMP_R_COMMUNITY, A.SNMPV3_SEC_LEVEL, A.SNMPV3_USER_NAME, A.SNMPV3_AUTH_PROTOCOL, A.SNMPV3_AUTH_PWD, A.SNMPV3_PRIV_PROTOCOL, A.SNMPV3_PRIV_PWD
+			, A.URL, A.IS_START_SECURITY, A.ACCESS_NAME, A.ACCESS_PWD, A.DB_INSTANCE_NAME
+			, A.APP_MONITOR, A.APP_SESSION, A.IS_MONITOR, A.ENV_TYPE, A.IS_USE, A.IS_PUSHED, A.DESCR, B.RES_NAME AS BIZ_NAME
+		FROM ITM_CMDB A, ITM_CMDB B
+		WHERE A.BIZ_ID = B.RES_ID 
+		  AND A.IP_SEC = #{IP_SEC}
+		  <if test="SUBTYPE != null">
+		  	AND A.SUBTYPE = #{SUBTYPE}
+		  </if>
+		  <if test="BIZ_ID != null">
+		    AND B.RES_ID = #{BIZ_ID}
+		  </if>
+	</select>
+	<!-- 分割, 以下为资源管理功能用 -->
+	<!-- 获取一条资源纪录的明细 -->
+	<select id="getCmdb" parameterType="string" resultType="map">
+		SELECT CMDB.*, BIZ.RES_NAME AS BIZ_NAME
+		FROM ITM_CMDB CMDB LEFT JOIN ITM_CMDB BIZ ON CMDB.BIZ_ID=BIZ.RES_ID 
+		WHERE  CMDB.RES_ID=#{value} AND CMDB.IS_USE='1' AND BIZ.IS_USE='1'
+	</select>
+	<!-- 获取一条资源的配置参数 -->
+	<select id="getCmdbParamsByResId" parameterType="String" resultType="map">
+		SELECT * FROM ITM_CMDB_PARAMS WHERE  RES_ID=#{value}
+	</select>
+		
+	<!-- 插入一条资源纪录 -->
+	<insert id="insertCmdb" parameterType="map" >
+		INSERT INTO ITM_CMDB(
+		RES_ID,
+		RES_NAME,
+		BIZ_ID,
+		CATEGORY,
+		SUBTYPE,
+		IP,
+		IP_SEC,
+		PORT,
+		SNMP_VERSION,
+		SNMP_R_COMMUNITY,
+		SNMPV3_SEC_LEVEL, SNMPV3_USER_NAME, SNMPV3_AUTH_PROTOCOL, SNMPV3_AUTH_PWD,
+		SNMPV3_PRIV_PROTOCOL, SNMPV3_PRIV_PWD,
+		URL,
+		IS_START_SECURITY,
+		ACCESS_NAME,
+		ACCESS_PWD,
+		APP_MONITOR,
+		DB_INSTANCE_NAME,
+		IS_MONITOR,
+		ENV_TYPE,
+		DESCR) 
+		 VALUES (
+		#{RES_ID,jdbcType=VARCHAR},
+		#{RES_NAME,jdbcType=VARCHAR},
+		#{BIZ_ID,jdbcType=VARCHAR},
+		#{CATEGORY,jdbcType=VARCHAR},
+		#{SUBTYPE,jdbcType=VARCHAR},
+		#{IP,jdbcType=VARCHAR},
+		#{IP_SEC,jdbcType=VARCHAR},
+		#{PORT,jdbcType=VARCHAR},
+		#{SNMP_VERSION,jdbcType=CHAR},
+		#{SNMP_R_COMMUNITY,jdbcType=VARCHAR},
+        #{SNMPV3_SEC_LEVEL,jdbcType=CHAR},
+        #{SNMPV3_USER_NAME,jdbcType=VARCHAR},
+        #{SNMPV3_AUTH_PROTOCOL,jdbcType=VARCHAR},
+        #{SNMPV3_AUTH_PWD,jdbcType=VARCHAR},
+        #{SNMPV3_PRIV_PROTOCOL,jdbcType=VARCHAR},
+        #{SNMPV3_PRIV_PWD,jdbcType=VARCHAR},
+		#{URL,jdbcType=VARCHAR},
+		#{IS_START_SECURITY,jdbcType=CHAR},
+		#{ACCESS_NAME,jdbcType=VARCHAR},
+		#{ACCESS_PWD,jdbcType=VARCHAR},
+		#{APP_MONITOR,jdbcType=VARCHAR},
+		#{DB_INSTANCE_NAME,jdbcType=VARCHAR},
+		#{IS_MONITOR,jdbcType=CHAR},
+		#{ENV_TYPE,jdbcType=CHAR},
+		#{DESCR,jdbcType=VARCHAR})
+	</insert>
+	
+	<!-- 插入一条资源的配置参数 -->
+	<insert id="insertCmdbParams" parameterType="map">
+		INSERT INTO ITM_CMDB_PARAMS(
+		RES_ID, 
+		PARAM_NAME, 
+		PARAM_VALUE,
+		PARAM_DESCR
+		)
+		VALUES(
+		#{RES_ID,jdbcType=VARCHAR},
+        #{PARAM_NAME,jdbcType=VARCHAR},
+        #{PARAM_VALUE,jdbcType=VARCHAR},
+        #{PARAM_DESCR,jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<!-- 修改一条资源 -->
+	<update id="updateCmdb"  parameterType="map">
+		UPDATE ITM_CMDB 
+		SET
+			<if test="RES_NAME!=null"> 
+				RES_NAME=#{RES_NAME,jdbcType=VARCHAR},
+			</if>
+			<if test="BIZ_ID!=null">
+				BIZ_ID=#{BIZ_ID,jdbcType=VARCHAR},
+			</if>
+			<if test="CATEGORY!=null">
+				CATEGORY=#{CATEGORY,jdbcType=VARCHAR},
+			</if>
+			<if test="SUBTYPE!=null">
+				SUBTYPE=#{SUBTYPE,jdbcType=VARCHAR},
+			</if>
+			<if test="IP!=null">
+				IP=#{IP,jdbcType=VARCHAR},
+			</if>
+			<if test="PORT!=null">
+				PORT=#{PORT,jdbcType=VARCHAR},
+			</if>
+			<if test="IS_MONITOR!=null">
+				IS_MONITOR=#{IS_MONITOR,jdbcType=CHAR},
+			</if>
+			<if test="ENV_TYPE!=null">
+				ENV_TYPE=#{ENV_TYPE,jdbcType=CHAR},
+			</if>
+				SNMP_VERSION=#{SNMP_VERSION,jdbcType=VARCHAR},
+				SNMP_R_COMMUNITY=#{SNMP_R_COMMUNITY,jdbcType=VARCHAR},
+		        SNMPV3_SEC_LEVEL=#{SNMPV3_SEC_LEVEL,jdbcType=CHAR},
+		        SNMPV3_USER_NAME=#{SNMPV3_USER_NAME,jdbcType=VARCHAR},
+		        SNMPV3_AUTH_PROTOCOL=#{SNMPV3_AUTH_PROTOCOL,jdbcType=VARCHAR},
+		        SNMPV3_AUTH_PWD=#{SNMPV3_AUTH_PWD,jdbcType=VARCHAR},
+		        SNMPV3_PRIV_PROTOCOL=#{SNMPV3_PRIV_PROTOCOL,jdbcType=VARCHAR},
+		        SNMPV3_PRIV_PWD=#{SNMPV3_PRIV_PWD,jdbcType=VARCHAR},
+				URL=#{URL,jdbcType=VARCHAR},
+				IP_SEC=#{IP_SEC,jdbcType=VARCHAR},
+				IS_START_SECURITY=#{IS_START_SECURITY,jdbcType=VARCHAR},
+				ACCESS_NAME=#{ACCESS_NAME,jdbcType=VARCHAR},
+				ACCESS_PWD=#{ACCESS_PWD,jdbcType=VARCHAR},
+				APP_MONITOR=#{APP_MONITOR,jdbcType=VARCHAR},
+				DB_INSTANCE_NAME=#{DB_INSTANCE_NAME,jdbcType=VARCHAR},
+				DESCR=#{DESCR,jdbcType=VARCHAR},
+				IS_PUSHED='0'
+		WHERE  RES_ID=#{RES_ID} 
+	</update>	
+
+	
+	<!-- 删除一条资源 -->
+	<update id="deleteCmdb" parameterType="String">
+		update ITM_CMDB  SET IS_USE='0',IS_PUSHED='0',IS_MONITOR='0'  WHERE  RES_ID=#{value}	
+	</update>
+    <!-- 删除业务系统下的所有cmdb资源 -->
+	<update id="deleteCmdbbybiz" parameterType="String">
+		update ITM_CMDB  SET IS_USE='0',IS_PUSHED='0',IS_MONITOR='0'  WHERE  BIZ_ID=#{value}	
+	</update>
+	<!-- 删除一条资源的配置参数 -->
+	<delete id="deleteCmdbParams" parameterType="String">
+		DELETE FROM ITM_CMDB_PARAMS WHERE  RES_ID=#{value}   		
+	</delete>
+	
+	<!-- 根据查询条件获取多条资源纪录 -->
+	<!-- 根据IP查询时，要显示IP或备用IP相符合的资源 -->
+	<select id="getAllCmdbPage" parameterType="map" resultType="map" >
+		SELECT CMDB.*, BIZ.RES_NAME AS BIZ_NAME 
+		FROM  ITM_CMDB CMDB LEFT JOIN ITM_CMDB BIZ ON CMDB.BIZ_ID=BIZ.RES_ID
+		<where> 1 = 1 AND CMDB.IS_USE='1' AND BIZ.IS_USE='1'
+				<if test="res_nameSearch != null">
+					AND CMDB.RES_NAME like CONCAT(CONCAT('%',#{res_nameSearch}),'%')
+				</if>
+				<if test="biz_idSearch != null">
+					AND BIZ.RES_ID = #{biz_idSearch}
+				</if>
+				<if test="ipSearch != null">
+					AND CMDB.IP like CONCAT(CONCAT('%',#{ipSearch}),'%')
+					OR CMDB.IP_SEC like CONCAT(CONCAT('%',#{ipSearch}),'%')
+				</if>
+				<if test="is_monitorSearch != null">
+					AND CMDB.IS_MONITOR = #{is_monitorSearch}
+				</if>
+		</where>
+		ORDER BY  CMDB.BIZ_ID DESC,CMDB.CATEGORY,CMDB.IP
+	</select>
+	
+	<!-- 根据资源类型查询业务系统 -->
+	<select id="getCmdbBiz"  resultType="map">
+		SELECT RES_ID,RES_NAME FROM ITM_CMDB  WHERE CATEGORY='BIZSYS' AND IS_USE='1'
+	</select>
+	
+	<!-- 业务系统对应联系人ITM_BIZ_LINKMAN -->
+	<!-- 获取指定业务系统的联系人列表 -->
+	<select id="getBizLinkmanByBizId"  parameterType="String" resultType="map">
+		SELECT B.BIZ_ID,B.LINKMAN_ID ,L.LINKMAN_NAME, L.EMAIL, L.COMPANY, L.TEL
+		FROM ITM_BIZ_LINKMAN B,ITM_LINKMAN L
+		WHERE B.LINKMAN_ID = L.LINKMAN_ID
+		AND B.BIZ_ID = #{value}
+		ORDER BY L.LINKMAN_NAME
+	</select>
+	
+	<!-- 获取未选择联系人列表 -->
+	<select id="getLinkmanList"  parameterType="map" resultType="map">
+		SELECT *
+		FROM ITM_LINKMAN
+		WHERE 1=1
+		  <if test="linkman_nameSearch != null">
+		  AND LINKMAN_NAME LIKE '%'||#{linkman_nameSearch}||'%'
+		  </if>
+		<choose>
+	          <when test="BIZ_LINKMAN_LIST!=null">
+	              AND 
+                  <foreach collection="BIZ_LINKMAN_LIST" index="index" item="bizman" open="(" separator="AND" close=")">  
+                        LINKMAN_ID != #{bizman}
+                  </foreach> 
+	          </when>
+	      </choose>
+		ORDER BY LINKMAN_NAME
+	</select>
+	
+	<!-- 插入指定业务系统的联系人信息  -->
+	<insert id="insertBizLinkman" parameterType="map">
+		INSERT INTO ITM_BIZ_LINKMAN(
+		BIZ_ID, 
+		LINKMAN_ID
+		)
+		VALUES(
+		#{BIZ_ID,jdbcType=VARCHAR},
+        #{LINKMAN_ID,jdbcType=VARCHAR}
+		)
+	</insert>
+	<!-- 删除业务系统的指定联系人信息  -->
+	<delete id="deleteBizLinkman" parameterType="String">
+		DELETE FROM ITM_BIZ_LINKMAN 
+		WHERE  BIZ_ID = #{value}		
+	</delete>
+	
+	<!-- 业务系统的预警开关  -->
+	<update id="switchMonitorById" parameterType="map">
+	    UPDATE ITM_CMDB
+	    SET IS_MONITOR = #{IS_MONITOR}, IS_PUSHED='0'
+	    WHERE 1 = 1
+	      AND
+	    <foreach collection="resList" index="index" item="resId" open="(" separator="OR" close=")">
+	         RES_ID = #{resId}
+        </foreach>
+        <if test="BIZ_ID != null">
+            AND BIZ_ID = #{BIZ_ID}
+        </if>
+	</update>
+</mapper>

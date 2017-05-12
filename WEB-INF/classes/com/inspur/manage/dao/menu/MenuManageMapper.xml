@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.manage.dao.menu.MenuManageMapper">
+
+	<!-- 查询菜单、权限是否启用 --> 
+	<select id="querySysConfig" resultType="map" parameterType="String">
+		SELECT SYS_CONFIG_KEY,SYS_CONFIG_VALUE FROM SYS_CONFIG WHERE SYS_CONFIG_KEY = #{value}
+	</select>
+	<!-- 启用虚拟菜单 --> 
+	<update id="startVirtualMenu" parameterType="String">
+		UPDATE SYS_CONFIG SET SYS_CONFIG_VALUE = '1' WHERE SYS_CONFIG_KEY = #{value}
+	</update>
+	
+	<!-- 查询虚拟应用 -->
+	<select id="queryVirtualApp" resultType="map" parameterType ="map">
+		SELECT A1.APP_ID APP_ID,A1.APP_NAME VIRTUAL_APP_NAME,A1.APP_ICON APP_ICON,
+			   A1.APP_SEQ APP_SEQ,A1.REF_APP_ID REF_APP_ID
+			  ,A1.CONFIG_JSON CONFIG_JSON, A2.APP_NAME APP_NAME
+		FROM SYS_VIRTUAL_APP A1
+		LEFT JOIN SYS_APP A2 ON A1.REF_APP_ID =  A2.APP_ID
+		WHERE 1=1
+		<if test="APP_ID != null and APP_ID !='' ">
+			AND A1.APP_ID = #{APP_ID}
+		</if>
+		<if test="APP_NAME != null and APP_NAME !='' ">
+			AND A1.APP_NAME LIKE '%${APP_NAME}%'
+		</if>
+		<if test="REF_APP_ID != null and REF_APP_ID !='' ">
+			AND A1.REF_APP_ID = #{REF_APP_ID}
+		</if>
+		ORDER BY A1.APP_SEQ ASC
+	</select>
+	
+	<!-- 查询不对应实际应用的虚拟应用 -->
+	<select id="queryMainVirtualApp" resultType="map">
+		SELECT APP_ID,APP_NAME,APP_ICON,APP_SEQ,REF_APP_ID,CONFIG_JSON
+		FROM SYS_VIRTUAL_APP 
+		WHERE REF_APP_ID = '' OR REF_APP_ID = NULL
+		ORDER BY APP_SEQ ASC
+	</select>
+	
+	<!-- 删除全部虚拟应用 -->
+	<delete id="deleteAllVirtualApp">
+		DELETE FROM SYS_VIRTUAL_APP
+	</delete>
+	
+	<!-- 批量插入虚拟应用 -->
+	<insert id="insertVirtualApp" parameterType ="map">	
+		INSERT INTO SYS_VIRTUAL_APP ( APP_ID,APP_NAME,APP_ICON,APP_SEQ,REF_APP_ID )
+		<foreach collection="list" item="obj" index="index" separator=" UNION " >  
+			SELECT #{obj.APP_ID},#{obj.APP_NAME},#{obj.APP_ICON},#{obj.APP_SEQ},${obj.REF_APP_ID} FROM LAMBO_DUAL
+		</foreach>
+	</insert>
+	
+	<!-- 插入一条虚拟应用 -->
+	<insert id="insertOneVirtualApp" parameterType ="map">	
+		INSERT INTO SYS_VIRTUAL_APP ( APP_NAME,APP_ICON,APP_SEQ,REF_APP_ID,CONFIG_JSON,APP_ID)
+		VALUES (#{APP_NAME},#{APP_ICON},#{APP_SEQ},#{REF_APP_ID},#{CONFIG_JSON},#{APP_ID})
+	</insert>
+	
+	<!-- 删除虚拟应用 -->
+	<delete id="deleteVirtualApp" parameterType ="String">	
+		DELETE FROM SYS_VIRTUAL_APP WHERE APP_ID IN (${value})
+	</delete>
+	
+	<!-- 查询实际应用 --> 
+	<select id="queryApp" resultType="map" parameterType ="map">
+		SELECT APP_ID,APP_NAME,APP_CONTEXT,APP_ICON,APP_SEQ
+		FROM SYS_APP
+		WHERE 1=1
+		<if test="APP_ID != null and APP_ID !='' ">
+			AND APP_ID = #{APP_ID}
+		</if>
+		<if test="APP_NAME != null and APP_NAME !='' ">
+			AND APP_NAME = #{APP_NAME}
+		</if>
+	</select>
+	
+	<!-- 插入菜单类型 -->
+	<insert id="insertMenuType" parameterType ="map">	
+		INSERT INTO SYS_MENU_TYPE (MENU_TYPE_ID,MENU_TYPE_NAME,BUSI_CODE,IS_DEFAULT) 
+		VALUES ( #{MENU_TYPE_ID},#{MENU_TYPE_NAME},#{BUSI_CODE},#{IS_DEFAULT} )
+	</insert>
+	
+	<!-- 删除全部菜单类型 -->
+	<delete id="deleteAllMenuType">	
+		DELETE FROM SYS_MENU_TYPE
+	</delete>
+	
+	<!-- 查询菜单类型 -->
+	<select id="queryMenuTypeList" parameterType ="map" resultType="map" >	
+		SELECT T.MENU_TYPE_ID,T.MENU_TYPE_NAME,T.BUSI_CODE,T.IS_DEFAULT,COUNT(L.VIRTUAL_APP_ID) VIRTUAL_APP_NUM
+		FROM SYS_MENU_TYPE T
+		LEFT JOIN SYS_MENU_TYPE_LINE L
+		ON T.MENU_TYPE_ID = L.MENU_TYPE_ID
+		WHERE 1=1
+		<if test="MENU_TYPE_NAME != null and MENU_TYPE_NAME !='' ">
+			AND T.MENU_TYPE_NAME LIKE '%${MENU_TYPE_NAME}%'
+		</if>
+		GROUP BY T.MENU_TYPE_ID,T.MENU_TYPE_NAME,T.BUSI_CODE,T.IS_DEFAULT
+	</select>
+	
+	<!-- 查询菜单类型明细-->
+	<select id="queryMenuTypeDetail" parameterType ="map" resultType="map" >	
+		SELECT MENU_TYPE_ID,MENU_TYPE_NAME,BUSI_CODE,IS_DEFAULT
+		FROM SYS_MENU_TYPE
+		WHERE 1=1
+		<if test="MENU_TYPE_ID != null and MENU_TYPE_ID !='' ">
+			AND MENU_TYPE_ID = #{MENU_TYPE_ID}
+		</if>
+		<if test="MENU_TYPE_NAME != null and MENU_TYPE_NAME !='' ">
+			AND MENU_TYPE_NAME = #{MENU_TYPE_NAME}
+		</if>
+	</select>
+	
+	<!-- 查询菜单类型和虚拟应用的对应 -->
+	<select id="queryMenuTypeToVirtualApp" parameterType ="map" resultType="map" >	
+		SELECT L.MENU_TYPE_ID,L.SEQ,L.VIRTUAL_APP_ID,T.APP_NAME APP_NAME
+		FROM SYS_MENU_TYPE_LINE L
+		LEFT JOIN SYS_VIRTUAL_APP T ON L.VIRTUAL_APP_ID = T.APP_ID
+		WHERE 1=1
+		<if test="MENU_TYPE_ID != null and MENU_TYPE_ID !='' ">
+			AND MENU_TYPE_ID = #{MENU_TYPE_ID}
+		</if>
+		ORDER BY SEQ ASC
+	</select>
+	
+	<!-- 删除全部菜单类型和虚拟应用的对应 -->
+	<delete id="deleteAllMenuTypeToVirtualApp">
+		DELETE FROM SYS_MENU_TYPE_LINE
+	</delete>
+	
+	<!-- 批量插入菜单类型和虚拟应用对应 -->
+	<insert id="insertMenuTypeToVirtualApp" parameterType ="map">
+		INSERT INTO SYS_MENU_TYPE_LINE (MENU_TYPE_ID,SEQ,VIRTUAL_APP_ID)
+		<foreach collection="list" item="obj" index="index" separator=" UNION " >  
+			SELECT  #{obj.MENU_TYPE_ID},#{obj.SEQ},#{obj.VIRTUAL_APP_ID} FROM LAMBO_DUAL
+		</foreach>
+	</insert>
+	
+	<!-- 删除菜单类型 -->
+	<delete id="deleteMenuType" parameterType ="String">
+		DELETE FROM SYS_MENU_TYPE WHERE MENU_TYPE_ID IN (${value})
+	</delete>
+	<!-- 删除菜单类型和虚拟应用对应 -->
+	<delete id="deleteMenuTypeToVirtualApp" parameterType ="String">
+		DELETE FROM SYS_MENU_TYPE_LINE WHERE MENU_TYPE_ID IN (${value})
+	</delete>
+	
+	<!-- 删除菜单类型对应虚拟应用对应 -->
+	<delete id="deleteVirtalAppInMenuType" parameterType ="String">
+		DELETE FROM SYS_MENU_TYPE_LINE WHERE VIRTUAL_APP_ID IN (${value})
+	</delete>
+	
+	<!-- 设置菜单类型 -->
+	<update id="updateMenyTypeStatus" parameterType ="String">
+		UPDATE SYS_MENU_TYPE SET IS_DEFAULT = #{value}
+	</update>
+	
+	<!-- 查询某虚拟应用菜单 -->
+	<select id="queryVirtualAppMenu" resultType="map"  parameterType ="String">
+		SELECT MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE,IS_LEAF,APP_ID
+		FROM SYS_MENU
+		WHERE VIRTUAL_APP_ID = #{value}
+		ORDER BY PARENT_ID,MENU_INDEX ASC
+	</select>
+	
+	<!-- 删除全部菜单 -->
+	<delete id="deleteAllAppMenu">
+		DELETE FROM SYS_MENU
+	</delete>
+	
+	<!-- 查询某虚拟应用菜单 -->
+	<select id="queryVirtualAppMenuS" resultType="map"  parameterType ="String">
+		SELECT MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE,IS_LEAF
+		FROM SYS_MENU
+		WHERE VIRTUAL_APP_ID IN ( ${value} )
+		ORDER BY PARENT_ID,MENU_INDEX ASC
+	</select>
+	
+	<!-- 删除某虚拟应用菜单 -->
+	<delete id="deleteVirtualAppMenu"  parameterType ="String">
+		DELETE FROM SYS_MENU
+		WHERE VIRTUAL_APP_ID = #{value}
+	</delete>
+	
+	<!-- 插入某虚拟应用菜单 -->
+	<insert id="insertVirtualAppMenu"  parameterType ="map">
+		INSERT INTO SYS_MENU ( MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE,IS_LEAF,APP_ID )
+		<foreach collection="list" item="obj" index="index" separator=" UNION " >  
+			SELECT #{obj.MENU_ID},#{obj.VIRTUAL_APP_ID},#{obj.MENU_NAME},#{obj.MENU_ICON},#{obj.MENU_URL},
+				   #{obj.PARENT_ID},#{obj.MENU_INDEX},#{obj.NOTE},#{obj.IS_LEAF},#{obj.APP_ID}
+			FROM LAMBO_DUAL
+		</foreach>
+	</insert>
+	
+	<!-- 查询某虚拟应用顶级菜单 -->
+	<select id="queryVirtualAppTopMenu" resultType="map"  parameterType ="String">
+		SELECT MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE
+		FROM SYS_MENU
+		WHERE VIRTUAL_APP_ID = #{value} AND PARENT_ID = '#'
+		ORDER BY PARENT_ID,MENU_INDEX ASC
+	</select>
+	
+	<!-- 查询某内置应用菜单 -->
+	<select id="queryAppMenu" resultType="map"  parameterType ="String">
+		SELECT MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE
+		FROM SYS_MENU
+		WHERE APP_ID = #{value}
+	</select>
+	
+	<!-- 查询某内置应用顶级菜单 -->
+	<select id="queryAppTopMenu" resultType="map"  parameterType ="String">
+		SELECT MENU_ID,VIRTUAL_APP_ID,MENU_NAME,MENU_ICON,MENU_URL,PARENT_ID,MENU_INDEX,NOTE
+		FROM SYS_MENU
+		WHERE APP_ID = #{value} AND PARENT_ID = '#'
+	</select>
+	
+</mapper>

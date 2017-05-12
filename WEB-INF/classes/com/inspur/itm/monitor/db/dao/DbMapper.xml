@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.inspur.itm.monitor.db.dao.DbMapper">
+    
+    <!-- 获取锁等待 -->
+    <select id="queryLockWaits" parameterType="map" resultType="map">
+        SELECT L.UNIQUE_ID, L.RES_ID, C.RES_NAME, L.SID, L.OBJECT_NAME, L.START_TIME, L.LOCK_TYPE
+             , L.LOCK_MODE, L.SQL_ID, L.SQL_TEXT, L.STATUS, L.UPDATE_TIME
+        FROM ITM_LOCKWAITS_SNAP L, ITM_CMDB C
+        WHERE L.RES_ID = C.RES_ID
+        <if test="RES_ID != null">
+          AND L.RES_ID = #{RES_ID}
+        </if>
+        <if test="SID != null">
+          AND L.SID = #{SID}
+        </if>
+        <if test="objectName != null">
+            AND L.OBJECT_NAME LIKE '%'||#{objectName}||'%'
+        </if>
+        <if test="startTimeSearch != null">
+            AND L.START_TIME LIKE '%'||#{startTimeSearch}||'%'
+        </if>
+        <if test="status != null">
+            AND L.STATUS = #{status}
+        </if>
+        ORDER BY L.STATUS, L.START_TIME DESC, L.UPDATE_TIME DESC
+    </select>
+    
+    <!-- 新增锁等待记录 -->
+    <insert id="insertLockWaits" parameterType="map">
+        INSERT INTO ITM_LOCKWAITS_SNAP(UNIQUE_ID, RES_ID, SID, OBJECT_NAME, START_TIME, LOCK_TYPE , LOCK_MODE, SQL_ID, SQL_TEXT, STATUS, UPDATE_TIME, IS_PUSHED)
+        VALUES(
+            #{UNIQUE_ID},
+            #{RES_ID},
+            #{SID},
+            #{OBJECT_NAME, jdbcType=VARCHAR},
+            #{START_TIME, jdbcType=VARCHAR},
+            #{LOCK_TYPE, jdbcType=VARCHAR},
+            #{LOCK_MODE, jdbcType=VARCHAR},
+            #{SQL_ID, jdbcType=VARCHAR},
+            #{SQL_TEXT, jdbcType=VARCHAR},
+            '0',
+            #{UPDATE_TIME, jdbcType=VARCHAR}, '0'
+        )
+    </insert>
+    
+    <!-- 删除锁等待 -->
+    <delete id="deleteLockWaits" parameterType="map">
+        DELETE FROM ITM_LOCKWAITS_SNAP 
+        WHERE 1=1
+        <if test="RES_ID != null">
+            AND RES_ID = #{RES_ID} 
+        </if>
+        <if test="SID != null">
+            AND SID = #{SID}
+        </if>
+        <if test="UPDATE_TIME != null">
+            AND UPDATE_TIME = #{UPDATE_TIME}
+        </if>
+    </delete>
+    
+    <!-- 关闭锁等待 -->
+    <update id="closeLockWaits" parameterType="map">
+        UPDATE ITM_LOCKWAITS_SNAP
+        SET STATUS='1', UPDATE_TIME=#{UPDATE_TIME}, IS_PUSHED='0'
+        WHERE RES_ID = #{RES_ID} AND STATUS = '0'
+    </update>
+    
+    <!-- 删除两天前的锁等待 -->
+    <delete id="deleteLockWaitsByDate" parameterType="string">
+        DELETE FROM ITM_LOCKWAITS_SNAP WHERE SUBSTR(START_TIME, 1, 8) &lt;= #{value}
+    </delete>
+</mapper>

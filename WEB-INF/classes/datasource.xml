@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+
+<beans>
+	<!-- jndi数据源配置,tomcat 
+	<bean id="dataSource" class="org.springframework.jndi.JndiObjectFactoryBean"> 
+		<property name="jndiName"> <value>java:comp/env/jdbc/lambo</value> </property> 
+	</bean> 
+	-->
+
+	<!--JNDI datasource configuration for DB2/Oracle masterDB 
+	<bean id="dataSource" 
+		class="org.springframework.jndi.JndiObjectFactoryBean"> <property name="jndiName"><value>jdbc/v6td</value></property> 
+	</bean> 
+	-->
+	
+	<!-- jdbc数据源配置 -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy">
+        <constructor-arg ref="dhcpdataSource"/>
+    </bean>
+    <bean id="dhcpdataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${datasource.driver}" />
+        <property name="url" value="jdbc:postgresql://${DB_HOST}:${DB_PORT}/postgres" />
+        <property name="username" value="${DB_USER}" />
+        <property name="password" value="${DB_PWD}" />
+        <property name="initialSize" value="1" />
+        <property name="maxActive" value="100" />
+        <property name="maxIdle" value="100" />
+        <property name="poolPreparedStatements" value="true" />
+    </bean>
+
+	<bean id="multipleDataSource" class="com.inspur.lambo.framework.mvc.MultipleDataSource">
+		<property name="defaultTargetDataSource" ref="dataSource" />
+		<property name="targetDataSources">
+			<map>
+				<entry key="defaultDataSource" value-ref="dataSource" />
+			</map>
+		</property>
+	</bean>
+</beans>

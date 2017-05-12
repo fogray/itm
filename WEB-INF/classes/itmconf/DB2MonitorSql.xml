@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+
+<beans>
+    <!-- DB2监控SQL -->
+    <bean id="gatherDB2Sql" class="java.util.HashMap">
+        <constructor-arg>
+            <map>
+                <!-- 1、数据库状态 -->
+                 <entry key="db-basic-info" 
+                     value="SELECT DB_NAME, DB_PATH, TO_CHAR(LAST_BACKUP,'YYYYMMDD hh24:mi:ss') AS LAST_BACKUP FROM SYSIBMADM.SNAPDB WITH UR">
+                 </entry>
+                 
+                 <!-- 2、数据库管理视图信息 -->
+                 <entry key="dbm-snap-info" 
+                    value="SELECT DB2_STATUS, PRODUCT_NAME, TO_CHAR(DB2START_TIME,'YYYYMMDD hh24:mi:ss') AS DB2START_TIME, (DAYS(SNAPSHOT_TIMESTAMP)-DAYS(DB2START_TIME))*86400 + (midnight_seconds(SNAPSHOT_TIMESTAMP)-midnight_seconds(DB2START_TIME)) AS UPTIME FROM SYSIBMADM.SNAPDBM WITH UR">
+                 </entry>
+                 
+                 <!-- 3、数据库管理配置参数 -->
+                 <entry key="dbm-cfg" value="SELECT NAME, VALUE, VALUE_FLAGS , CASE WHEN NAME ='num_poolagents' THEN '[DBM]代理程序池大小'  	   WHEN NAME ='query_heap_sz' THEN '[DBM]查询存储到代理的内存=250(4K)' 	   WHEN NAME ='sheapthres' THEN '[DBM]私有排序阀值(4K)'   ELSE '' END AS DESCR FROM SYSIBMADM.DBMCFG WHERE NAME IN ('num_poolagents','query_heap_sz','sheapthres') WITH UR"></entry>
+                 
+                 <!-- 4、数据库配置参数 -->
+                 <entry key="db-cfg" value="SELECT NAME, VALUE, VALUE_FLAGS , CASE WHEN NAME ='catalogcache_sz' THEN '[DB]目录高速缓存(4K)' WHEN NAME ='locklist' THEN '[锁]锁列表缓冲区的最大空间(4K)' WHEN NAME ='locktimeout' THEN '[锁]应用获取锁所等待的时间(s)' WHEN NAME ='logbufsz' THEN '[DB]日志缓冲大小(4K)' WHEN NAME ='logfilsiz' THEN '[Log]日志文件大小（4K）' WHEN NAME ='logprimary' THEN '[Log]主日志文件数' WHEN NAME ='logsecond' THEN '[Log]从日志文件数' WHEN NAME ='maxappls' THEN '[DB]最大连接数' WHEN NAME ='maxfilop' THEN '[DB]最大文件数' WHEN NAME ='maxlocks' THEN '[锁]允许应用程序占用锁列表的百分比' WHEN NAME ='num_ioservers' THEN '[DB]异步页清除程序数' WHEN NAME ='pckcachesz' THEN '[DB]包缓存大小(4K)' WHEN NAME ='sheapthres_shr' THEN '[DB]共享排序阀值(4K)' WHEN NAME ='sortheap' THEN '[DB]排序堆大小(4K)' ELSE '' END AS DESCR FROM SYSIBMADM.DBCFG 
+											WHERE NAME IN ('pckcachesz','num_ioservers','locklist','catalogcache_sz','logfilsiz','maxlocks','logsecond','locktimeout','maxappls','sortheap','sheapthres_shr','logbufsz','logprimary','maxfilop') WITH UR"></entry>
+                 
+                 <!-- 5、缓冲池 -->
+                 <entry key="bp-info" value="SELECT BP.BPNAME, BP.PAGESIZE, BP.NPAGES, BPHR.TOTAL_HIT_RATIO_PERCENT, BPHR.DATA_HIT_RATIO_PERCENT, BPHR.INDEX_HIT_RATIO_PERCENT FROM SYSCAT.BUFFERPOOLS BP, SYSIBMADM.BP_HITRATIO BPHR WHERE BP_NAME NOT LIKE 'IBMSYS%' AND BP.BPNAME = BPHR.BP_NAME WITH UR">
+                </entry>
+                 
+                 <!-- 6、表空间 -->
+                 <entry key="tbsp-info" value="SELECT TU.TBSP_NAME,tb.BPNAME, TU.TBSP_TYPE, TU.TBSP_CONTENT_TYPE, TU.TBSP_STATE, TU.TBSP_USABLE_SIZE_KB, TU.TBSP_USED_SIZE_KB, TU.TBSP_FREE_SIZE_KB, TU.TBSP_UTILIZATION_PERCENT, TU.TBSP_AUTO_RESIZE_ENABLED, CU.FS_FREE_SIZE_KB FROM SYSIBMADM.TBSP_UTILIZATION TU, (SELECT TBSP_NAME, SUM(FS_TOTAL_SIZE_KB)-SUM(FS_USED_SIZE_KB) AS FS_FREE_SIZE_KB FROM SYSIBMADM.CONTAINER_UTILIZATION GROUP BY TBSP_NAME) CU,(SELECT T.TBSPACEID,B.BPNAME FROM SYSCAT.TABLESPACES T, SYSCAT.BUFFERPOOLS B WHERE T.BUFFERPOOLID = B.BUFFERPOOLID) TB WHERE TU.TBSP_NAME = CU.TBSP_NAME AND TU.TBSP_ID=TB.TBSPACEID ORDER BY TU.TBSP_TYPE WITH UR">
+                 </entry>
+                 <!-- 7、性能指标 -->
+                 <entry key="db-performance" value="SELECT ROUND(100.0*(1-PKG_CACHE_INSERTS/PKG_CACHE_LOOKUPS), 2) AS PKG_CACHE_HIT_RATIO,
+                                                        ROUND(100.0*(1-CAT_CACHE_INSERTS/CAT_CACHE_LOOKUPS), 2) AS CAT_CACHE_HIT_RATIO,
+                                                        ROUND(100.0*SORT_OVERFLOWS/TOTAL_SORTS, 2) AS SORT_OVERFLOW_PERCENT,
+                                                        ROUND(((LOG_WRITE_TIME_S+LOG_WRITE_TIME_NS)/1000000)/NUM_LOG_WRITE_IO, 2) AS AVG_LOG_WRITE_MS,
+                                                        DEADLOCKS, LOCK_ESCALS, LOCKS_WAITING,
+                                                        (APPLS_IN_DB2-1) AS APPLS_IN_DB2, APPLS_CUR_CONS,
+                                                        ROUND(100.0*(APPLS_IN_DB2-1)/APPLS_CUR_CONS, 2) AS APPLS_USED_UTIL,
+                                                        POOL_DRTY_PG_STEAL_CLNS 
+                                                    FROM SYSIBMADM.SNAPDB WITH UR">
+                </entry>
+                <!-- 8、当前正在执行SQL的数量 -->
+                <entry key="cur-top-sql-count" 
+                    value="SELECT COUNT(1) AS COUNT FROM (SELECT A.SNAPSHOT_TIMESTAMP,SUBSTR(B.APPL_ID, 1, 35) AS APPL_ID, A.AGENT_ID AS APP_HANDLE, D.AGENT_ID_HOLDING_LK, B.APPL_STATUS, B.COORD_AGENT_PID, A.STMT_START,A.STMT_STOP,VALUE(A.STMT_STOP,A.SNAPSHOT_TIMESTAMP)-A.STMT_START AS BEGIN_END_S, (A.STMT_ELAPSED_TIME_S*1000000+A.STMT_ELAPSED_TIME_MS)/1000000 AS ELAPSED_TIME_S,  A.STMT_TEXT from SYSIBMADM.SNAPSTMT A,SYSIBMADM.SNAPAPPL_INFO B LEFT JOIN SYSIBMADM.SNAPLOCKWAIT D ON B.AGENT_ID = D.AGENT_ID WHERE A.AGENT_ID = B.AGENT_ID and A.STMT_TEXT is not null  AND A.AGENT_ID=B.AGENT_ID ORDER BY A.STMT_STOP DESC) WITH UR">
+                </entry>
+                <!-- 9、锁等待信息-->
+                <entry key="lock-waiting" value="SELECT LW.AGENT_ID, TO_CHAR(LW.LOCK_WAIT_START_TIME,'YYYYMMDD hh24:mi:ss') LOCK_WAIT_START_TIME , LW.LOCK_OBJECT_TYPE , LW.TABNAME , LW.LOCK_MODE , STMT.STMT_TEXT FROM SYSIBMADM.SNAPLOCKWAIT LW LEFT JOIN SYSIBMADM.SNAPSTMT STMT ON LW.AGENT_ID = STMT.AGENT_ID WITH UR">
+                </entry>
+                
+                <!-- 10、索引列表 -->
+                <entry key="index-list-info" value="SELECT IND.TABSCHEMA, IND.TABNAME, IND.INDNAME, IND.INDEXTYPE, IND.STATS_TIME, IND.LASTUSED, IND.INDCARD, TAB.CARD, TAB.COLCOUNT, IND.COLNAMES, IND.CREATE_TIME, IND.COMPRESSION FROM SYSCAT.INDEXES IND, SYSCAT.TABLES TAB WHERE IND.TABSCHEMA NOT LIKE 'SYS%' AND IND.OWNERTYPE='U' AND TAB.OWNERTYPE='U' AND IND.TABSCHEMA = TAB.TABSCHEMA AND IND.TABNAME = TAB.TABNAME ORDER BY IND.LASTUSED ASC WITH UR">
+                </entry>
+                
+                <!-- 11、日志写入速度：ms -->
+                <entry key="log-write_speed" value="SELECT ROUND((LOG_WRITE_TIME_S*1000+LOG_WRITE_TIME_NS/1000000)/NUM_LOG_WRITE_IO, 2) AS AVG_LOG_WRITE_MS FROM SYSIBMADM.SNAPDB WITH UR">
+                </entry>
+                
+                <!-- 12、事务平均响应时间：s -->
+                <entry key="avg-trans-time" value="SELECT DEC((SUM((UOW_ELAPSED_TIME_S * 1000000 + UOW_ELAPSED_TIME_MS) / 1000000)*1.0 /SUM((COMMIT_SQL_STMTS + INT_COMMITS + ROLLBACK_SQL_STMTS + INT_ROLLBACKS))),17,2) AS AVG_TRANS_TIMES_S FROM SYSIBMADM.SNAPAPPL WITH UR">
+                </entry>
+                
+                 <!-- 13、TOP n平均执行时间 -->
+                 <entry key="top-execTime" value="SELECT DEC(AVG(AVERAGE_EXECUTION_TIME_S),17,2) AVG_EXEC_TIME_S FROM( SELECT * FROM ( SELECT AVERAGE_EXECUTION_TIME_S , ROW_NUMBER() OVER(ORDER BY AVERAGE_EXECUTION_TIME_S DESC) ROW_NUM FROM SYSIBMADM.TOP_DYNAMIC_SQL ) WHERE ROW_NUM &lt;=? ) WITH UR"></entry>
+                
+                 <!-- 14、查询长时间没有使用的索引 -->
+                 <entry key="non-used-indexs" value="SELECT IND.TABSCHEMA, IND.TABNAME, IND.INDNAME, IND.INDEXTYPE, IND.LASTUSED, TAB.CARD, IND.COLNAMES FROM SYSCAT.INDEXES IND, SYSCAT.TABLES TAB WHERE IND.OWNERTYPE='U' AND TAB.OWNERTYPE='U' AND IND.TABSCHEMA = TAB.TABSCHEMA AND IND.TABNAME = TAB.TABNAME AND IND.LASTUSED &lt; ? ORDER BY IND.LASTUSED ASC WITH UR"></entry>
+                
+            </map>
+        </constructor-arg>
+    </bean>
+    
+    <bean id="topDB2Sql" class="java.util.HashMap">
+        <constructor-arg>
+        <!-- DB2 -->
+            <map>
+            <!-- 1、当前执行的SQL语句 -->
+             <entry key="cur-top-sql" 
+                 value="SELECT TO_CHAR(A.SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,SUBSTR(B.APPL_ID, 1, 35) AS APPL_ID, A.AGENT_ID AS APP_HANDLE, D.AGENT_ID_HOLDING_LK, B.APPL_STATUS, B.COORD_AGENT_PID, A.STMT_START,A.STMT_STOP,VALUE(A.STMT_STOP,A.SNAPSHOT_TIMESTAMP)-A.STMT_START AS BEGIN_END_S, (A.STMT_ELAPSED_TIME_S*1000000+A.STMT_ELAPSED_TIME_MS)/1000000 AS ELAPSED_TIME_S,  A.STMT_TEXT from SYSIBMADM.SNAPSTMT A,SYSIBMADM.SNAPAPPL_INFO B LEFT JOIN SYSIBMADM.SNAPLOCKWAIT D ON B.AGENT_ID = D.AGENT_ID WHERE A.AGENT_ID = B.AGENT_ID and A.STMT_TEXT is not null  AND A.AGENT_ID=B.AGENT_ID ORDER BY A.STMT_STOP DESC WITH UR">
+             </entry>
+             
+             <!-- 2、总用户CPU时间 TOP SQL -->
+             <entry key="cpu-top-sql" 
+                value="SELECT * FROM (SELECT TOTAL_USR_CPU_TIME,NUM_EXECUTIONS,stmt_text,TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP, row_number() over(ORDER BY TOTAL_USR_CPU_TIME DESC) ROW_NUM FROM SYSIBMADM.SNAPDYN_SQL) WHERE ROW_NUM &lt;=? WITH UR">
+             </entry>
+             
+             <!-- 3、平均用户CPU时间 TOP SQL -->
+             <entry key="avg-cpu-top-sql" 
+                value="SELECT * FROM (SELECT A.*, row_number() over(ORDER BY A.AVG_USR_CPU_TIME_S DESC) ROW_NUM from ( SELECT DECODE(NUM_EXECUTIONS, 0, TOTAL_USR_CPU_TIME, DEC((TOTAL_USR_CPU_TIME*1000000+TOTAL_USR_CPU_TIME_MS)/NUM_EXECUTIONS/1000000, 17,2)) AVG_USR_CPU_TIME_S,NUM_EXECUTIONS,stmt_text,TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP FROM SYSIBMADM.SNAPDYN_SQL) A) WHERE ROW_NUM &lt;=? WITH UR">
+             </entry>
+             
+             <!-- 4、io读写 TOP SQL-->
+             <entry key="io-top-sql" value="SELECT * FROM (select TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,stmt_text,ROWS_READ,ROWS_WRITTEN,NUM_EXECUTIONS, row_number() over(order by ROWS_READ desc) ROW_NUM FROM sysibmadm.snapdyn_sql) WHERE ROW_NUM &lt;=? WITH UR"></entry>
+             
+             <!-- 5、平均执行时间最长的TOP SQL -->
+             <entry key="execTime-top-sql" value="SELECT * FROM (select TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,DEC(average_execution_time_s,17,2) average_execution_time_s,num_executions,stmt_text, row_number() over(order by average_execution_time_s desc) ROW_NUM from sysibmadm.top_dynamic_sql where num_executions &gt;=? ) WHERE ROW_NUM &lt;=? WITH UR"></entry>
+             
+             <!-- 6、总执行时间最长的TOP SQL -->
+             <entry key="total-execTime-top-sql" value="SELECT * FROM (select TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,total_exec_time,num_executions,stmt_text, row_number() over(order by total_exec_time desc) ROW_NUM from sysibmadm.snapdyn_sql ) WHERE ROW_NUM &lt;=? WITH UR"></entry>
+             
+             <!-- 7、执行次数最多的TOP SQL-->
+             <entry key="execMost-top-sql" value="SELECT * FROM (SELECT TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,stmt_text,NUM_EXECUTIONS,TOTAL_USR_CPU_TIME,TOTAL_EXEC_TIME,SORT_OVERFLOWS, row_number() over(ORDER BY NUM_EXECUTIONS desc) ROW_NUM FROM sysibmadm.snapdyn_sql ) WHERE ROW_NUM &lt;=? WITH UR"></entry>
+             
+             <!-- 8、排序最多的TOP SQL-->
+             <entry key="orderMost-top-sql" value="SELECT * FROM (SELECT TO_CHAR(SNAPSHOT_TIMESTAMP,'YYYYMMDD HH24:MI:SS') AS SNAPSHOT_TIMESTAMP,stmt_text,stmt_sorts,SORT_OVERFLOWS,TOTAL_USR_CPU_TIME,NUM_EXECUTIONS, row_number() over(ORDER BY stmt_sorts desc) ROW_NUM FROM sysibmadm.snapdyn_sql ) WHERE ROW_NUM &lt;=? WITH UR"></entry>
+             
+            </map>
+        </constructor-arg>
+    </bean>
+    
+</beans>
